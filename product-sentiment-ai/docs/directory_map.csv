@@ -1,0 +1,11 @@
+功能,任务,工作内容,人员,完成情况,对应目录
+前后端,后端+项目部署,后端接口+服务器部署,郑平高,,backend/
+,前端,前端页面设计,邓新晓,,frontend/
+数据处理,刘攀,数据预处理,,,data/processed/ + data/scripts/preprocess/
+,唐海乘,人工标注,,,data/annotated/ + data/scripts/annotate/
+,江彩亮,人工标注,,,data/annotated/ + data/scripts/annotate/
+模型,基线,规则/TF-IDF垫底分数,人员4,,models/baseline/
+,FastText,轻量升级,人员5,,models/fasttext/
+,总BERT,全品类强模型,人员6,,models/bert_all/
+,类目BERT,分品类再加强,人员7,,models/bert_category/
+,类目BERT,分品类再加强,人员8,,models/bert_category/

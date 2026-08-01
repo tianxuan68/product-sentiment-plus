@@ -1,0 +1,25 @@
+# 模型权重与缓存
+**/checkpoints/*
+!**/checkpoints/.gitkeep
+*.bin
+*.pt
+*.pth
+*.onnx
+*.ftz
+*.vec
+
+# 大数据（原始源数据如需入库可删掉对应规则）
+*.csv.gz
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+
+# 前端
+../frontend/node_modules/
+../frontend/dist/
+
+# IDE / 系统
+.DS_Store
+Thumbs.db
