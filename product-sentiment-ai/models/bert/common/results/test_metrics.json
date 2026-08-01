@@ -1,0 +1,11 @@
+{
+  "best_epoch": 4,
+  "best_val_macro_f1": 0.8787919474009699,
+  "loss": 0.2837,
+  "exact_acc": 0.74,
+  "macro_f1": 0.894,
+  "micro_f1": 0.9208,
+  "hamming_loss": 0.0114,
+  "precision_macro": 0.8925,
+  "recall_macro": 0.9144
+}
