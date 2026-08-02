@@ -1,4 +1,6 @@
 # 模型权重与缓存
+**/model/*
+!**/model/.gitkeep
 **/checkpoints/*
 !**/checkpoints/.gitkeep
 **/pretrained/

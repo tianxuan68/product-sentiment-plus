@@ -1,33 +1,21 @@
 """
-拼多多式动态打标：
-  评论 → 方面/观点标签（review_tags）→ 按商品聚合（product_tags）
+案例:
+    拼多多式动态打标：评论 → review_tags → 按商品聚合 product_tags。
 
-规则抽取（可后续换成 BERT/LLM），不修改 sources，只写 processed/vocab。
+大白话:
+    规则抽「方面+观点」，再按商品数人头，挂到标签墙上。
 
-用法：
-  python dynamic_tagging.py
-  python dynamic_tagging.py --min-count 2 --top-k 20
+用法:
+    python dynamic_tagging.py
+    python dynamic_tagging.py --min-count 2 --top-k 20
 """
 
-from __future__ import annotations
-
+# 导包
 import argparse
+import os
 import re
-from collections import Counter, defaultdict
-from pathlib import Path
 
 import pandas as pd
-
-ROOT = Path(__file__).resolve().parents[2]
-PROCESSED = ROOT / "processed"
-VOCAB = ROOT / "vocab"
-ANNOTATED = ROOT / "annotated"
-
-REVIEWS_CSV = PROCESSED / "reviews.csv"
-VOCAB_CSV = VOCAB / "category_tag_vocab.csv"
-REVIEW_TAGS_CSV = PROCESSED / "review_tags.csv"
-PRODUCT_TAGS_CSV = PROCESSED / "product_tags.csv"
-ANNOTATED_TAGS_CSV = ANNOTATED / "review_tags.csv"
 
 # (aspect, tag, polarity, patterns)
 # patterns: 命中任一即抽该标签
@@ -96,15 +84,21 @@ def build_vocab_rows() -> list[dict]:
     return rows
 
 
-def run(min_count: int, top_k: int, max_reviews: int | None) -> None:
-    if not REVIEWS_CSV.exists():
-        raise FileNotFoundError(f"缺少 {REVIEWS_CSV}，请先 prepare_reviews.py")
+def run(min_count, top_k, max_reviews=None):
+    reviews_csv = "./data/processed/reviews.csv"
+    vocab_csv = "./data/vocab/category_tag_vocab.csv"
+    review_tags_csv = "./data/processed/review_tags.csv"
+    product_tags_csv = "./data/processed/product_tags.csv"
+    annotated_tags_csv = "./data/annotated/review_tags.csv"
 
-    print("=" * 50)
-    print("动态打标")
-    print("=" * 50)
+    if not os.path.exists(reviews_csv):
+        raise FileNotFoundError(f"缺少 {reviews_csv}，请先 prepare_reviews.py")
 
-    df = pd.read_csv(REVIEWS_CSV, encoding="utf-8-sig")
+    print('-' * 50)
+    print(f'动态打标')
+    print('-' * 50)
+
+    df = pd.read_csv(reviews_csv, encoding="utf-8-sig")
     if max_reviews:
         df = df.head(max_reviews).copy()
         print(f"调试模式: 仅处理前 {len(df)} 条")
@@ -174,48 +168,51 @@ def run(min_count: int, top_k: int, max_reviews: int | None) -> None:
         grouped = grouped[grouped["rank"] <= top_k].drop(columns=["rank"])
         product_tags = grouped[product_cols].reset_index(drop=True)
 
-    VOCAB.mkdir(parents=True, exist_ok=True)
-    PROCESSED.mkdir(parents=True, exist_ok=True)
-    ANNOTATED.mkdir(parents=True, exist_ok=True)
+    os.makedirs("./data/vocab", exist_ok=True)
+    os.makedirs("./data/processed", exist_ok=True)
+    os.makedirs("./data/annotated", exist_ok=True)
 
-    def safe_to_csv(df: pd.DataFrame, path: Path) -> Path:
+    def safe_to_csv(df, path):
         """文件被 Excel 占用时写到 .new.csv，避免整段失败。"""
         try:
             df.to_csv(path, index=False, encoding="utf-8-sig")
             return path
         except PermissionError:
-            alt = path.with_name(path.stem + ".new.csv")
+            alt = path.replace(".csv", ".new.csv")
             df.to_csv(alt, index=False, encoding="utf-8-sig")
-            print(f"警告: {path.name} 被占用，已改写到 {alt.name}，请关闭占用后替换")
+            print(f'警告: {path} 被占用，已改写到 {alt}，请关闭占用后替换')
             return alt
 
-    safe_to_csv(pd.DataFrame(build_vocab_rows()), VOCAB_CSV)
-    safe_to_csv(review_tags, REVIEW_TAGS_CSV)
-    safe_to_csv(review_tags, ANNOTATED_TAGS_CSV)
-    safe_to_csv(product_tags, PRODUCT_TAGS_CSV)
+    safe_to_csv(pd.DataFrame(build_vocab_rows()), vocab_csv)
+    safe_to_csv(review_tags, review_tags_csv)
+    safe_to_csv(review_tags, annotated_tags_csv)
+    safe_to_csv(product_tags, product_tags_csv)
 
-    print(f"词表: {VOCAB_CSV}")
-    print(f"评论标签: {REVIEW_TAGS_CSV}")
-    print(f"商品标签墙: {PRODUCT_TAGS_CSV} ({len(product_tags)} 行)")
+    print(f'词表: {vocab_csv}')
+    print(f'评论标签: {review_tags_csv}')
+    print(f'商品标签墙: {product_tags_csv} ({len(product_tags)} 行)')
     if len(product_tags):
         top_products = (
             product_tags.groupby("product_id")["count"].sum().nlargest(5)
         )
-        print("标签提及最多的商品(top5):")
+        print(f'标签提及最多的商品(top5):')
         print(top_products)
         sample_pid = top_products.index[0]
-        print(f"\n示例商品标签墙 {sample_pid}:")
+        print(f'\n示例商品标签墙 {sample_pid}:')
         print(product_tags[product_tags["product_id"] == sample_pid].head(10))
 
 
 def main():
+    # 1. 解析参数
     parser = argparse.ArgumentParser()
-    parser.add_argument("--min-count", type=int, default=1)
-    parser.add_argument("--top-k", type=int, default=15)
-    parser.add_argument("--max-reviews", type=int, default=None)
+    parser.add_argument("--min-count", type=int, default=1)       # 参1: 标签至少出现次数
+    parser.add_argument("--top-k", type=int, default=15)          # 参2: 每商品最多标签数
+    parser.add_argument("--max-reviews", type=int, default=None)  # 参3: 调试限量
     args = parser.parse_args()
+    # 2. 跑打标
     run(args.min_count, args.top_k, args.max_reviews)
 
 
 if __name__ == "__main__":
+    # 1. 动态打标入口
     main()

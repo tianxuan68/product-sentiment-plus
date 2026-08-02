@@ -71,16 +71,16 @@ vocab/category_tag_vocab.csv   # 标签词表
 
 ```bash
 # 训练
-python models/fasttext/scripts/train.py
+python -m models.fasttext.scripts.train
 
 # 验证集评测
-python models/fasttext/scripts/predict.py --eval-val
+python -m models.fasttext.scripts.predict --eval-val
 
 # 单句预测
-python models/fasttext/scripts/predict.py --text "质量很好，发货也快，下次还买"
+python -m models.fasttext.scripts.predict --text "质量很好，发货也快，下次还买"
 
 # 批量预测官方测试集（写出 csv）
-python models/fasttext/scripts/predict.py --predict-test
+python -m models.fasttext.scripts.predict --predict-test
 ```
 
 ---
@@ -99,7 +99,7 @@ pip install pandas scikit-learn jieba joblib torch transformers tqdm modelscope
 首次训 BERT 若本机没有权重：
 
 ```bash
-python models/common/scripts/download_bert.py
+python -m models.common.scripts.download_bert
 ```
 
 ---
@@ -119,51 +119,51 @@ python data/scripts/annotate/dynamic_tagging.py
 ### 2）机器学习基线
 
 ```bash
-python models/baseline/scripts/train.py
+python -m models.baseline.scripts.train
 # 小样本调试：
-python models/baseline/scripts/train.py --max-samples 3000
+python -m models.baseline.scripts.train --max-samples 3000
 ```
 
-产出：`models/baseline/checkpoints/baseline.joblib` + `results/metrics.json`
+产出：`models/baseline/model/baseline.joblib` + `results/metrics.json`
 
 ### 3）FastText 风格
 
 ```bash
-python models/fasttext/scripts/train.py
+python -m models.fasttext.scripts.train
 ```
 
-产出：`models/fasttext/checkpoints/fasttext_style.joblib`
+产出：`models/fasttext/model/fasttext_style.joblib`
 
 ### 4）BERT 教师
 
 ```bash
 # 推荐：FP16 + 动态padding + 较大 batch（本地权重，不联网）
-python models/bert/common/scripts/train.py --epochs 3 --batch-size 48 --threshold-tune
+python -m models.bert.common.scripts.train --epochs 3 --batch-size 48 --threshold-tune
 
 # 更看重精确率时：
-python models/bert/common/scripts/train.py --epochs 3 --batch-size 48 --threshold-tune --metric precision
+python -m models.bert.common.scripts.train --epochs 3 --batch-size 48 --threshold-tune --metric precision
 
 # 可选：分品类加强
-python models/bert/category/scripts/train.py --epochs 2 --top-n-categories 3
+python -m models.bert.category.scripts.train --epochs 2 --top-n-categories 3
 ```
 
-产出：`models/bert/common/checkpoints/bert_all/`
+产出：`models/bert/common/model/bert_all/`
 
 ### 5）模型蒸馏
 
 ```bash
 # 必须先有教师 bert_all
-python models/bert/distill/scripts/train.py --epochs 3
+python -m models.bert.distill.scripts.train --epochs 3
 ```
 
-产出：`models/bert/distill/checkpoints/bert_student/`
+产出：`models/bert/distill/model/bert_student/`
 
 ### 6）一键流水线 / 对比
 
 ```bash
 python run_pipeline.py --smoke          # 冒烟
 python run_pipeline.py --full           # 全量
-python models/common/scripts/compare_results.py
+python -m models.common.scripts.compare_results
 ```
 
 对比表：`models/common/results/model_compare.csv`
@@ -188,12 +188,82 @@ python models/common/scripts/compare_results.py
 
 ---
 
+## API（解耦分层）
+
+```text
+api/
+├── main.py          # 只组装路由，不写业务
+├── config.py        # 只放路径
+├── schemas.py       # 请求/响应长什么样
+├── routers/         # 接口层：收参数 → 调 service → 返回
+└── services/        # 业务层：真正干活（跑脚本/读模型/查 CSV）
+```
+
+谁干什么，一句话：
+
+| 层 | 干什么 | 别在这里干啥 |
+|----|--------|--------------|
+| `routers/` | URL 和 HTTP | 别写训练/读模型细节 |
+| `services/` | 业务逻辑 | 别写 FastAPI 装饰器 |
+| `models/*/scripts/` | 原训练脚本 | 被 service 用子进程调用 |
+| `config.py` | 路径常量 | 别写算法 |
+
+### 启动
+
+```bash
+cd product-sentiment-ai
+python -m uvicorn api.main:app --reload --port 8001
+```
+
+### 导包说明（红线 / ModuleNotFoundError）
+
+用包导包；路径写在函数里，不要模块顶层静态变量：
+
+```python
+from models.common.dataset.load_reviews import load_xy
+
+def main():
+    ckpt = "./models/baseline/model/baseline.joblib"
+    result = "./models/baseline/results/metrics.json"
+    ...
+```
+
+训练请在 `product-sentiment-ai` 目录下用模块方式运行：
+
+```bash
+python -m models.baseline.scripts.train
+python -m models.fasttext.scripts.train
+python -m models.bert.common.scripts.train
+```
+
+IDE 已配置 `extraPaths`。若仍报红：重启 IDE，并确认 conda 环境。
+
+浏览器打开：http://127.0.0.1:8001/docs
+
+### 常用接口
+
+| 方法 | 路径 | 作用 |
+|------|------|------|
+| GET | `/health` | 健康检查、模型是否存在 |
+| POST | `/api/data/prepare` | 后台清洗数据 |
+| POST | `/api/tag/run` | 后台动态打标 |
+| POST | `/api/train/start` | 后台训练（body: `{"model":"fasttext"}`） |
+| GET | `/api/jobs/{job_id}` | 查后台任务进度 |
+| POST | `/api/predict/one` | 单句预测（`{"text":"...","model":"fasttext"}`） |
+| GET | `/api/products/{product_id}/tags` | 商品标签墙 |
+| POST | `/api/train/reload` | 训练完刷新预测缓存 |
+
+`model` 可选：`baseline` / `fasttext` / `bert` / `distill` / `bert_category` / `compare`
+
+---
+
 ## 目录
 
 ```text
 product-sentiment-ai/
 ├── README.md
 ├── run_pipeline.py
+├── api/                         # FastAPI（解耦入口）
 ├── data/
 │   ├── sources/                 # 原始数据（只读）
 │   ├── processed/               # 处理后的训练/标签数据
@@ -203,12 +273,12 @@ product-sentiment-ai/
 │       └── annotate/            # dynamic_tagging
 └── models/
     ├── common/                  # 读数据、评测、下权重
-    ├── baseline/                # ML 基线
-    ├── fasttext/                # FastText 风格
+    ├── baseline/model/          # 基线权重
+    ├── fasttext/model/
     └── bert/
-        ├── common/              # 总 BERT（教师）
-        ├── category/            # 类目 BERT
-        └── distill/             # 蒸馏学生
+        ├── common/model/        # 总 BERT
+        ├── category/model/      # 类目 BERT
+        └── distill/model/       # 蒸馏学生
 ```
 
 ---
@@ -217,5 +287,5 @@ product-sentiment-ai/
 
 - **不要改** `data/sources/` 下的原始 CSV。
 - Windows 上官方 `fasttext` 常装不上，本仓库用 **char-ngram 线性模型** 复现同一思想；若 Linux 可装官方库，可自行替换训练脚本，输入输出接口保持一致即可。
-- 蒸馏脚本默认读取 `models/bert/common/checkpoints/bert_all`；没有教师时会退回预训练权重，但效果会差一截，建议先训教师。
+- 蒸馏脚本默认读取 `models/bert/common/model/bert_all`；没有教师时会退回预训练权重，但效果会差一截，建议先训教师。
 - GPU 可用时 BERT/蒸馏会自动用 CUDA。

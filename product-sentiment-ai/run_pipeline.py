@@ -1,37 +1,35 @@
 """
-一键流水线：
-  数据处理 → 动态打标 → 基线 → FastText → BERT → 蒸馏
+案例:
+    一键流水线：数据处理 → 动态打标 → 基线 → FastText → BERT → 蒸馏。
 
-用法：
-  python run_pipeline.py --smoke          # 小样本冒烟
-  python run_pipeline.py --full           # 完整训练
-  python run_pipeline.py --full --skip-bert
+用法（在 product-sentiment-ai 目录下）:
+    python run_pipeline.py --smoke
+    python run_pipeline.py --full
 """
 
-from __future__ import annotations
-
+# 导包
 import argparse
 import subprocess
 import sys
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+from models.common.pretrained_path import ensure_bert_pretrained
+
 PY = sys.executable
 
 
-def run(cmd: list[str]) -> None:
-    print("\n>>>", " ".join(cmd))
-    subprocess.run(cmd, cwd=ROOT, check=True)
+# 1. 定义函数, 跑子进程
+def run(cmd):
+    print(f'\n>>> {" ".join(cmd)}')
+    subprocess.run(cmd, check=True)
 
 
-def ensure_bert() -> None:
-    sys.path.insert(0, str(ROOT / "models"))
-    from common.pretrained_path import ensure_bert_pretrained
-
+# 2. 定义函数, 确保本地 BERT 权重就绪
+def ensure_bert():
     path = ensure_bert_pretrained()
-    print("BERT 权重就绪:", path)
+    print(f'BERT 权重就绪: {path}')
 
 
+# 3. 定义函数, 主流程
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--smoke", action="store_true", help="小样本冒烟")
@@ -43,86 +41,60 @@ def main():
     if not args.smoke and not args.full:
         args.smoke = True
 
+    # 3.1 数据准备 + 打标
     if not args.skip_prepare:
         run([PY, "data/scripts/preprocess/prepare_reviews.py"])
         run([PY, "data/scripts/preprocess/verify_processed.py"])
         run([PY, "data/scripts/annotate/dynamic_tagging.py"])
 
+    # 3.2 训练（用 python -m 包导包）
     if args.smoke:
-        run([PY, "models/baseline/scripts/train.py", "--max-samples", "3000"])
-        run([PY, "models/fasttext/scripts/train.py", "--max-samples", "3000"])
+        run([PY, "-m", "models.baseline.scripts.train", "--max-samples", "3000"])
+        run([PY, "-m", "models.fasttext.scripts.train", "--max-samples", "3000"])
         if not args.skip_bert:
             ensure_bert()
             run(
                 [
-                    PY,
-                    "models/bert/common/scripts/train.py",
-                    "--max-samples",
-                    "1500",
-                    "--epochs",
-                    "1",
-                    "--batch-size",
-                    "16",
+                    PY, "-m", "models.bert.common.scripts.train",
+                    "--max-samples", "1500", "--epochs", "1", "--batch-size", "16",
                 ]
             )
             run(
                 [
-                    PY,
-                    "models/bert/category/scripts/train.py",
-                    "--max-samples",
-                    "1200",
-                    "--epochs",
-                    "1",
-                    "--batch-size",
-                    "16",
-                    "--top-n-categories",
-                    "3",
+                    PY, "-m", "models.bert.category.scripts.train",
+                    "--max-samples", "1200", "--epochs", "1", "--batch-size", "16",
+                    "--top-n-categories", "3",
                 ]
             )
             if not args.skip_distill:
                 run(
                     [
-                        PY,
-                        "models/bert/distill/scripts/train.py",
-                        "--max-samples",
-                        "1500",
-                        "--epochs",
-                        "2",
-                        "--batch-size",
-                        "16",
+                        PY, "-m", "models.bert.distill.scripts.train",
+                        "--max-samples", "1500", "--epochs", "2", "--batch-size", "16",
                     ]
                 )
     else:
-        run([PY, "models/baseline/scripts/train.py"])
-        run([PY, "models/fasttext/scripts/train.py"])
+        run([PY, "-m", "models.baseline.scripts.train"])
+        run([PY, "-m", "models.fasttext.scripts.train"])
         if not args.skip_bert:
             ensure_bert()
-            run([PY, "models/bert/common/scripts/train.py", "--epochs", "2"])
+            run([PY, "-m", "models.bert.common.scripts.train", "--epochs", "2"])
             run(
                 [
-                    PY,
-                    "models/bert/category/scripts/train.py",
-                    "--epochs",
-                    "2",
-                    "--top-n-categories",
-                    "3",
+                    PY, "-m", "models.bert.category.scripts.train",
+                    "--epochs", "2", "--top-n-categories", "3",
                 ]
             )
             if not args.skip_distill:
-                run(
-                    [
-                        PY,
-                        "models/bert/distill/scripts/train.py",
-                        "--epochs",
-                        "3",
-                    ]
-                )
+                run([PY, "-m", "models.bert.distill.scripts.train", "--epochs", "3"])
 
-    run([PY, "models/common/scripts/compare_results.py"])
-    print("\n流水线完成。")
-    print("对比表: models/common/results/model_compare.csv")
-    print("商品标签墙: data/processed/product_tags.csv")
+    # 3.3 对比结果
+    run([PY, "-m", "models.common.scripts.compare_results"])
+    print(f'\n流水线完成。')
+    print(f'对比表: models/common/results/model_compare.csv')
+    print(f'商品标签墙: data/processed/product_tags.csv')
 
 
 if __name__ == "__main__":
+    # 1. 跑流水线
     main()

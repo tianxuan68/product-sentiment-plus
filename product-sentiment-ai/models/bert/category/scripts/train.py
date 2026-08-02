@@ -1,12 +1,14 @@
 """
-类目 BERT：在评论数最多的品类上微调（相对总 BERT 的分品类加强）
+案例:
+    类目 BERT：在评论数最多的品类上微调（相对总 BERT 的分品类加强）。
+
+大白话:
+    总模型看全部；这里挑样本多的品类再加一把劲。
 """
 
-from __future__ import annotations
-
+# 导包
 import argparse
-import sys
-from pathlib import Path
+import os
 
 import numpy as np
 import torch
@@ -17,16 +19,9 @@ from transformers import (
     get_linear_schedule_with_warmup,
 )
 
-ROOT = Path(__file__).resolve().parents[4]
-sys.path.insert(0, str(ROOT / "models"))
-
-from common.dataset.load_reviews import load_xy  # noqa: E402
-from common.metrics.evaluate import compute_metrics, save_metrics  # noqa: E402
-from common.pretrained_path import resolve_bert_model  # noqa: E402
-
-CKPT_DIR = Path(__file__).resolve().parents[1] / "checkpoints" / "bert_category"
-RESULT = Path(__file__).resolve().parents[1] / "results" / "metrics.json"
-_BERT_ALL = Path(__file__).resolve().parents[2] / "common" / "checkpoints" / "bert_all"
+from models.common.dataset.load_reviews import load_xy
+from models.common.metrics.evaluate import compute_metrics, save_metrics
+from models.common.pretrained_path import resolve_bert_model
 
 
 class ReviewDataset(Dataset):
@@ -65,12 +60,15 @@ def predict(model, loader, device):
     return golds, preds
 
 
-def default_model_name() -> str:
-    if (_BERT_ALL / "config.json").exists() and (
-        (_BERT_ALL / "model.safetensors").exists()
-        or (_BERT_ALL / "pytorch_model.bin").exists()
-    ):
-        return str(_BERT_ALL.resolve())
+def default_model_name():
+    # 有总 BERT 就接着微调；没有就用预训练
+    bert_all = "./models/bert/common/model/bert_all"
+    has_cfg = os.path.exists(bert_all + "/config.json")
+    has_w = os.path.exists(bert_all + "/model.safetensors") or os.path.exists(
+        bert_all + "/pytorch_model.bin"
+    )
+    if has_cfg and has_w:
+        return os.path.abspath(bert_all)
     return resolve_bert_model()
 
 
@@ -86,11 +84,18 @@ def main():
     parser.add_argument("--max-samples", type=int, default=None)
     args = parser.parse_args()
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print("=" * 50)
-    print("类目 BERT 训练")
-    print("=" * 50)
+    # 保存路径写在函数里
+    ckpt_dir = "./models/bert/category/model/bert_category"
+    result = "./models/bert/category/results/metrics.json"
 
+    # 1. 设备
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print('-' * 50)
+    print(f'类目 BERT 训练')
+    print('-' * 50)
+    print(f'device: {device}')
+
+    # 2. 按品类筛数据
     _, _, df_train = load_xy("train")
     _, _, df_val = load_xy("val")
 
@@ -112,59 +117,64 @@ def main():
         x_val, y_val = x_val[:n_val], y_val[:n_val]
 
     cate = ",".join(sorted(tops))
-    print(f"品类: {cate} | train={len(x_train)} val={len(x_val)}")
+    print(f'品类: {cate} | train={len(x_train)} val={len(x_val)}')
     if len(x_train) < 50 or len(x_val) < 20:
         raise RuntimeError("该类目样本过少，请换 --category 或增大数据")
 
+    # 3. 加载本地预训练 / 总 BERT
     model_name = resolve_bert_model(args.model_name or default_model_name())
-    print("model:", model_name)
-    tokenizer = AutoTokenizer.from_pretrained(model_name, local_files_only=True)
-    model = AutoModelForSequenceClassification.from_pretrained(
+    print(f'model: {model_name}')
+    my_tokenizer = AutoTokenizer.from_pretrained(model_name, local_files_only=True)
+    my_model = AutoModelForSequenceClassification.from_pretrained(
         model_name, num_labels=2, local_files_only=True
     ).to(device)
 
+    # 4. DataLoader（数据 -> Dataset -> Loader）
     train_loader = DataLoader(
-        ReviewDataset(x_train, y_train, tokenizer, args.max_len),
+        ReviewDataset(x_train, y_train, my_tokenizer, args.max_len),
         batch_size=args.batch_size,
-        shuffle=True,
+        shuffle=True,                   # 参1: 训练集打乱
     )
     val_loader = DataLoader(
-        ReviewDataset(x_val, y_val, tokenizer, args.max_len),
+        ReviewDataset(x_val, y_val, my_tokenizer, args.max_len),
         batch_size=args.batch_size,
+        shuffle=False,                  # 参2: 验证集不打乱
     )
 
-    optim = torch.optim.AdamW(model.parameters(), lr=args.lr)
+    # 5. 优化器 + 调度
+    optimizer = torch.optim.AdamW(my_model.parameters(), lr=args.lr)
     total_steps = max(len(train_loader) * args.epochs, 1)
     sched = get_linear_schedule_with_warmup(
-        optim, num_warmup_steps=int(0.1 * total_steps), num_training_steps=total_steps
+        optimizer, num_warmup_steps=int(0.1 * total_steps), num_training_steps=total_steps
     )
 
+    # 6. 训练循环：前向→损失→反向→更新
     best_f1 = -1.0
     for epoch in range(1, args.epochs + 1):
-        model.train()
+        my_model.train()
         losses = []
         for batch in train_loader:
             batch = {k: v.to(device) for k, v in batch.items()}
-            out = model(**batch)
+            out = my_model(**batch)
             out.loss.backward()
-            optim.step()
+            optimizer.step()
             sched.step()
-            optim.zero_grad()
+            optimizer.zero_grad()
             losses.append(out.loss.item())
-        golds, preds = predict(model, val_loader, device)
+        golds, preds = predict(my_model, val_loader, device)
         metrics = compute_metrics(golds, preds)
         print(
-            f"epoch={epoch} loss={np.mean(losses):.4f} "
-            f"acc={metrics['accuracy']:.4f} f1={metrics['f1']:.4f}"
+            f'epoch={epoch} loss={np.mean(losses):.4f} '
+            f'acc={metrics["accuracy"]:.4f} f1={metrics["f1"]:.4f}'
         )
         if metrics["f1"] > best_f1:
             best_f1 = metrics["f1"]
-            CKPT_DIR.mkdir(parents=True, exist_ok=True)
-            model.save_pretrained(CKPT_DIR)
-            tokenizer.save_pretrained(CKPT_DIR)
+            os.makedirs(ckpt_dir, exist_ok=True)
+            my_model.save_pretrained(ckpt_dir)
+            my_tokenizer.save_pretrained(ckpt_dir)
             save_metrics(
                 metrics,
-                RESULT,
+                result,
                 {
                     "model": "bert_category",
                     "categories": cate,
@@ -173,8 +183,9 @@ def main():
                 },
             )
 
-    print(f"最佳 f1={best_f1:.4f} 已保存: {CKPT_DIR}")
+    print(f'最佳 f1={best_f1:.4f} 已保存: {ckpt_dir}')
 
 
 if __name__ == "__main__":
+    # 1. 训练类目 BERT
     main()

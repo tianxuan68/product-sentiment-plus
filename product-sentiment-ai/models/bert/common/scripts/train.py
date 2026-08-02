@@ -1,27 +1,27 @@
 """
-总 BERT：全品类情感二分类（bert-base-chinese）
+案例:
+    总 BERT：全品类情感二分类（bert-base-chinese）。
 
-提速 / 提效果常用开关：
-  --fp16                 半精度（CUDA 默认开）
-  --batch-size 48/64     显存够就加大
-  --threshold-tune       验证集搜阈值，抬精确率
-  --metric precision     按精确率存最优（默认 f1）
-  --freeze-epochs 1      先冻 BERT 只训分类头，再解冻
-  --max-samples N        冒烟调试
+实现步骤:
+    1. 加载本地预训练（禁止去 HF 慢下载）
+    2. DataLoader（动态 padding）
+    3. 训练：前向→损失→清零→反向→更新
+    4. 验证集选最优（可阈值搜索抬精确率）
+    5. 保存到 models/bert/common/model/bert_all
 
-用法：
-  python train.py --epochs 2 --batch-size 48
-  python train.py --epochs 3 --batch-size 48 --threshold-tune --metric precision
+提速开关:
+    --fp16 / --batch-size 48 / --freeze-epochs 1 / --threshold-tune
+
+用法（在 product-sentiment-ai 目录下）:
+    python -m models.bert.common.scripts.train --epochs 2 --batch-size 48
 """
 
-from __future__ import annotations
-
+# 导包
 import argparse
-import sys
-from pathlib import Path
+import os
 
 import numpy as np
-import torch
+import torch                                                            # 深度学习框架
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 from transformers import (
@@ -30,15 +30,9 @@ from transformers import (
     get_linear_schedule_with_warmup,
 )
 
-ROOT = Path(__file__).resolve().parents[4]
-sys.path.insert(0, str(ROOT / "models"))
-
-from common.dataset.load_reviews import load_xy  # noqa: E402
-from common.metrics.evaluate import compute_metrics, save_metrics  # noqa: E402
-from common.pretrained_path import resolve_bert_model  # noqa: E402
-
-CKPT_DIR = Path(__file__).resolve().parents[1] / "checkpoints" / "bert_all"
-RESULT = Path(__file__).resolve().parents[1] / "results" / "metrics.json"
+from models.common.dataset.load_reviews import load_xy
+from models.common.metrics.evaluate import compute_metrics, save_metrics
+from models.common.pretrained_path import resolve_bert_model
 
 
 class ReviewDataset(Dataset):
@@ -153,66 +147,76 @@ def main():
     parser.add_argument("--grad-clip", type=float, default=1.0)
     parser.add_argument("--patience", type=int, default=2, help="早停耐心")
     args = parser.parse_args()
+
+    # 保存路径写在函数里
+    ckpt_dir = "./models/bert/common/model/bert_all"
+    result = "./models/bert/common/results/metrics.json"
+
     # CUDA 默认开 FP16；--no-fp16 关闭；--fp16 强制开
     if args.fp16 is None:
         use_amp = torch.cuda.is_available()
     else:
         use_amp = bool(args.fp16) and torch.cuda.is_available()
 
+    # 1. 设备
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print("=" * 50)
-    print("总 BERT 训练（优化版）")
-    print("=" * 50)
-    print("device:", device, "| fp16:", use_amp)
+    print('-' * 50)
+    print(f'总 BERT 训练（优化版）')
+    print('-' * 50)
+    print(f'device: {device} | fp16: {use_amp}')
     print(
-        f"batch={args.batch_size} lr={args.lr} metric={args.metric} "
-        f"threshold_tune={args.threshold_tune} freeze_epochs={args.freeze_epochs}"
+        f'batch={args.batch_size} lr={args.lr} metric={args.metric} '
+        f'threshold_tune={args.threshold_tune} freeze_epochs={args.freeze_epochs}'
     )
 
+    # 2. 加载数据
     x_train, y_train, _ = load_xy("train")
     x_val, y_val, _ = load_xy("val")
     if args.max_samples:
         x_train, y_train = x_train[: args.max_samples], y_train[: args.max_samples]
         n_val = max(args.max_samples // 5, 200)
         x_val, y_val = x_val[:n_val], y_val[:n_val]
-    print(f"train={len(x_train)} val={len(x_val)}")
+    print(f'train={len(x_train)} val={len(x_val)}')
 
+    # 3. 本地预训练（禁止去 HF）
     model_name = resolve_bert_model(args.model_name)
-    print("model:", model_name)
-    tokenizer = AutoTokenizer.from_pretrained(model_name, local_files_only=True)
-    model = AutoModelForSequenceClassification.from_pretrained(
+    print(f'model: {model_name}')
+    my_tokenizer = AutoTokenizer.from_pretrained(model_name, local_files_only=True)
+    my_model = AutoModelForSequenceClassification.from_pretrained(
         model_name, num_labels=2, local_files_only=True
     ).to(device)
 
-    collate = make_collate(tokenizer, args.max_len)
+    # 4. DataLoader：数据 -> Dataset -> Loader；动态 padding
+    collate_fn1 = make_collate(my_tokenizer, args.max_len)
     train_loader = DataLoader(
-        ReviewDataset(x_train, y_train, tokenizer, args.max_len),
+        ReviewDataset(x_train, y_train, my_tokenizer, args.max_len),
         batch_size=args.batch_size,
-        shuffle=True,
-        collate_fn=collate,
+        shuffle=True,                   # 参1: 训练集打乱
+        collate_fn=collate_fn1,
         pin_memory=torch.cuda.is_available(),
     )
     val_loader = DataLoader(
-        ReviewDataset(x_val, y_val, tokenizer, args.max_len),
+        ReviewDataset(x_val, y_val, my_tokenizer, args.max_len),
         batch_size=args.batch_size,
-        collate_fn=collate,
+        shuffle=False,                  # 参2: 验证集不打乱
+        collate_fn=collate_fn1,
         pin_memory=torch.cuda.is_available(),
     )
 
-    # 分类不平衡：给差评更高权重，常能稳住精确率/占比少数类
+    # 5. 类别权重：差评少，给更高权重
     n0 = max(y_train.count(0), 1)
     n1 = max(y_train.count(1), 1)
-    # 权重反比于频次，再归一
     w0, w1 = (n0 + n1) / (2.0 * n0), (n0 + n1) / (2.0 * n1)
     class_weight = torch.tensor([w0, w1], dtype=torch.float, device=device)
-    print(f"class_weight: 差评={w0:.3f} 好评={w1:.3f}")
+    print(f'class_weight: 差评={w0:.3f} 好评={w1:.3f}')
 
-    optim = torch.optim.AdamW(
-        model.parameters(), lr=args.lr, weight_decay=args.weight_decay
+    # 6. 优化器：W新 = W旧 - 学习率 * 梯度（AdamW 带动量/衰减）
+    optimizer = torch.optim.AdamW(
+        my_model.parameters(), lr=args.lr, weight_decay=args.weight_decay
     )
     total_steps = max(len(train_loader) * args.epochs, 1)
     sched = get_linear_schedule_with_warmup(
-        optim, num_warmup_steps=int(0.1 * total_steps), num_training_steps=total_steps
+        optimizer, num_warmup_steps=int(0.1 * total_steps), num_training_steps=total_steps
     )
     amp_device = "cuda" if device.type == "cuda" else "cpu"
     scaler = torch.amp.GradScaler(amp_device, enabled=use_amp)
@@ -221,13 +225,14 @@ def main():
     bad_epochs = 0
     best_thr = 0.5
 
+    # 7. 训练循环
     for epoch in range(1, args.epochs + 1):
         if args.freeze_epochs > 0:
             frozen = epoch <= args.freeze_epochs
-            set_requires_grad(model, requires_grad=not frozen)
-            print(f"epoch={epoch} encoder_frozen={frozen}")
+            set_requires_grad(my_model, requires_grad=not frozen)
+            print(f'epoch={epoch} encoder_frozen={frozen}')
 
-        model.train()
+        my_model.train()
         losses = []
         for batch in train_loader:
             labels = batch["labels"].to(device, non_blocking=True)
@@ -236,20 +241,21 @@ def main():
                 for k, v in batch.items()
                 if k != "labels"
             }
-            optim.zero_grad(set_to_none=True)
+            optimizer.zero_grad(set_to_none=True)
             with torch.amp.autocast(amp_device, enabled=use_amp):
-                out = model(**inputs)
+                out = my_model(**inputs)
+                # CrossEntropyLoss = softmax() + 损失计算 → 输出层勿再 Softmax
                 loss = F.cross_entropy(out.logits, labels, weight=class_weight)
             scaler.scale(loss).backward()
             if args.grad_clip > 0:
-                scaler.unscale_(optim)
-                torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
-            scaler.step(optim)
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(my_model.parameters(), args.grad_clip)
+            scaler.step(optimizer)
             scaler.update()
             sched.step()
             losses.append(float(loss.item()))
 
-        logits, golds = predict_logits(model, val_loader, device, use_amp)
+        logits, golds = predict_logits(my_model, val_loader, device, use_amp)
         if args.threshold_tune:
             tuned = tune_threshold(logits, golds, metric=args.metric)
             thr = tuned["threshold"]
@@ -261,22 +267,23 @@ def main():
 
         score = metrics[args.metric]
         print(
-            f"epoch={epoch} loss={np.mean(losses):.4f} thr={thr:.2f} "
-            f"acc={metrics['accuracy']:.4f} prec={metrics['precision']:.4f} "
-            f"rec={metrics['recall']:.4f} f1={metrics['f1']:.4f}"
+            f'epoch={epoch} loss={np.mean(losses):.4f} thr={thr:.2f} '
+            f'acc={metrics["accuracy"]:.4f} prec={metrics["precision"]:.4f} '
+            f'rec={metrics["recall"]:.4f} f1={metrics["f1"]:.4f}'
         )
 
         if score > best_score:
             best_score = score
             best_thr = thr
             bad_epochs = 0
-            CKPT_DIR.mkdir(parents=True, exist_ok=True)
-            model.save_pretrained(CKPT_DIR)
-            tokenizer.save_pretrained(CKPT_DIR)
-            (CKPT_DIR / "threshold.txt").write_text(str(best_thr), encoding="utf-8")
+            os.makedirs(ckpt_dir, exist_ok=True)
+            my_model.save_pretrained(ckpt_dir)
+            my_tokenizer.save_pretrained(ckpt_dir)
+            with open(ckpt_dir + "/threshold.txt", "w", encoding="utf-8") as f:
+                f.write(str(best_thr))
             save_metrics(
                 metrics,
-                RESULT,
+                result,
                 {
                     "model": "bert_all",
                     "base": model_name,
@@ -287,16 +294,17 @@ def main():
                     "fp16": use_amp,
                 },
             )
-            print(f"  ✓ 更新最优 {args.metric}={best_score:.4f}")
+            print(f'  ✓ 更新最优 {args.metric}={best_score:.4f}')
         else:
             bad_epochs += 1
-            print(f"  未提升 ({bad_epochs}/{args.patience})")
+            print(f'  未提升 ({bad_epochs}/{args.patience})')
             if bad_epochs >= args.patience:
-                print("早停")
+                print(f'早停')
                 break
 
-    print(f"最佳 {args.metric}={best_score:.4f} thr={best_thr:.2f} 已保存: {CKPT_DIR}")
+    print(f'最佳 {args.metric}={best_score:.4f} thr={best_thr:.2f} 已保存: {ckpt_dir}')
 
 
 if __name__ == "__main__":
+    # 1. 训练总 BERT
     main()

@@ -1,22 +1,22 @@
 """
-模型蒸馏：用总 BERT（教师）软标签，训练轻量学生模型。
+案例:
+    模型蒸馏：用总 BERT（教师）软标签，训练轻量学生模型。
 
-损失：
-  L = α * CE(学生, 硬标签) + (1-α) * T² * KL(教师软标签 || 学生软标签)
+损失口诀:
+    L = α * CE(学生, 硬标签) + (1-α) * T² * KL(教师软标签 || 学生软标签)
 
-学生默认是「更小的 BERT」（更少层、更小隐层），推理更快。
-依赖：先训练 models/bert/common（教师）。
+大白话:
+    老师把「软答案」教给小学生；学生参数更少，推理更快。
+依赖: 先训练 models/bert/common（教师）。
 
-用法：
-  python train.py
-  python train.py --max-samples 2000 --epochs 2
+用法:
+    python train.py
+    python train.py --max-samples 2000 --epochs 2
 """
 
-from __future__ import annotations
-
+# 导包
 import argparse
-import sys
-from pathlib import Path
+import os
 
 import numpy as np
 import torch
@@ -30,18 +30,9 @@ from transformers import (
     get_linear_schedule_with_warmup,
 )
 
-ROOT = Path(__file__).resolve().parents[4]
-sys.path.insert(0, str(ROOT / "models"))
-
-from common.dataset.load_reviews import load_xy  # noqa: E402
-from common.metrics.evaluate import compute_metrics, save_metrics  # noqa: E402
-from common.pretrained_path import resolve_bert_model  # noqa: E402
-
-TEACHER_DIR = (
-    Path(__file__).resolve().parents[2] / "common" / "checkpoints" / "bert_all"
-)
-CKPT_DIR = Path(__file__).resolve().parents[1] / "checkpoints" / "bert_student"
-RESULT = Path(__file__).resolve().parents[1] / "results" / "metrics.json"
+from models.common.dataset.load_reviews import load_xy
+from models.common.metrics.evaluate import compute_metrics, save_metrics
+from models.common.pretrained_path import resolve_bert_model
 
 
 class ReviewDataset(Dataset):
@@ -125,21 +116,28 @@ def main():
     parser.add_argument("--max-samples", type=int, default=None)
     args = parser.parse_args()
 
-    teacher_path = Path(args.teacher) if args.teacher else TEACHER_DIR
-    if not (teacher_path / "config.json").exists():
+    # 保存路径写在函数里
+    teacher_dir = "./models/bert/common/model/bert_all"
+    ckpt_dir = "./models/bert/distill/model/bert_student"
+    result = "./models/bert/distill/results/metrics.json"
+
+    teacher_path = args.teacher if args.teacher else teacher_dir
+    if not os.path.exists(os.path.join(teacher_path, "config.json")):
         # 退回未微调的预训练，仍可做蒸馏实验
         fallback = resolve_bert_model()
-        print(f"未找到微调教师 {teacher_path}，改用: {fallback}")
-        print("建议先跑: python models/bert/common/scripts/train.py")
-        teacher_path = Path(fallback)
+        print(f'未找到微调教师 {teacher_path}，改用: {fallback}')
+        print(f'建议先跑: python models/bert/common/scripts/train.py')
+        teacher_path = fallback
 
+    # 1. 设备
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print("=" * 50)
-    print("BERT 知识蒸馏")
-    print("=" * 50)
-    print("device:", device)
-    print("teacher:", teacher_path)
+    print('-' * 50)
+    print(f'BERT 知识蒸馏')
+    print('-' * 50)
+    print(f'device: {device}')
+    print(f'teacher: {teacher_path}')
 
+    # 2. 加载数据
     x_train, y_train, _ = load_xy("train")
     x_val, y_val, _ = load_xy("val")
     if args.max_samples:
@@ -147,44 +145,40 @@ def main():
         n_val = max(args.max_samples // 5, 200)
         x_val, y_val = x_val[:n_val], y_val[:n_val]
 
-    tokenizer = AutoTokenizer.from_pretrained(
-        str(teacher_path), local_files_only=True
+    # 3. 教师冻结 + 学生新建
+    my_tokenizer = AutoTokenizer.from_pretrained(
+        teacher_path, local_files_only=True
     )
     teacher = AutoModelForSequenceClassification.from_pretrained(
-        str(teacher_path), num_labels=2, local_files_only=True
+        teacher_path, num_labels=2, local_files_only=True
     ).to(device)
     teacher.eval()
     for p in teacher.parameters():
         p.requires_grad = False
 
     student = build_student(teacher).to(device)
-    print(
-        "学生参数量:",
-        sum(p.numel() for p in student.parameters()) / 1e6,
-        "M",
-    )
-    print(
-        "教师参数量:",
-        sum(p.numel() for p in teacher.parameters()) / 1e6,
-        "M",
-    )
+    print(f'学生参数量: {sum(p.numel() for p in student.parameters()) / 1e6:.2f} M')
+    print(f'教师参数量: {sum(p.numel() for p in teacher.parameters()) / 1e6:.2f} M')
 
+    # 4. DataLoader
     train_loader = DataLoader(
-        ReviewDataset(x_train, y_train, tokenizer, args.max_len),
+        ReviewDataset(x_train, y_train, my_tokenizer, args.max_len),
         batch_size=args.batch_size,
         shuffle=True,
     )
     val_loader = DataLoader(
-        ReviewDataset(x_val, y_val, tokenizer, args.max_len),
+        ReviewDataset(x_val, y_val, my_tokenizer, args.max_len),
         batch_size=args.batch_size,
     )
 
-    optim = torch.optim.AdamW(student.parameters(), lr=args.lr)
+    # 5. 优化器
+    optimizer = torch.optim.AdamW(student.parameters(), lr=args.lr)
     total_steps = max(len(train_loader) * args.epochs, 1)
     sched = get_linear_schedule_with_warmup(
-        optim, num_warmup_steps=int(0.1 * total_steps), num_training_steps=total_steps
+        optimizer, num_warmup_steps=int(0.1 * total_steps), num_training_steps=total_steps
     )
 
+    # 6. 蒸馏训练
     best_f1 = -1.0
     for epoch in range(1, args.epochs + 1):
         student.train()
@@ -195,32 +189,33 @@ def main():
             with torch.no_grad():
                 t_logits = teacher(**inputs).logits
             s_logits = student(**inputs).logits
+            # CrossEntropyLoss = softmax() + 损失；蒸馏再加软标签 KL
             loss = distill_loss(
                 s_logits, t_logits, labels, args.temperature, args.alpha
             )
             loss.backward()
-            optim.step()
+            optimizer.step()
             sched.step()
-            optim.zero_grad()
+            optimizer.zero_grad()
             losses.append(loss.item())
 
         golds, preds = predict(student, val_loader, device)
         metrics = compute_metrics(golds, preds)
         print(
-            f"epoch={epoch} loss={np.mean(losses):.4f} "
-            f"acc={metrics['accuracy']:.4f} f1={metrics['f1']:.4f}"
+            f'epoch={epoch} loss={np.mean(losses):.4f} '
+            f'acc={metrics["accuracy"]:.4f} f1={metrics["f1"]:.4f}'
         )
         if metrics["f1"] > best_f1:
             best_f1 = metrics["f1"]
-            CKPT_DIR.mkdir(parents=True, exist_ok=True)
-            student.save_pretrained(CKPT_DIR)
-            tokenizer.save_pretrained(CKPT_DIR)
+            os.makedirs(ckpt_dir, exist_ok=True)
+            student.save_pretrained(ckpt_dir)
+            my_tokenizer.save_pretrained(ckpt_dir)
             save_metrics(
                 metrics,
-                RESULT,
+                result,
                 {
                     "model": "bert_distill_student",
-                    "teacher": str(teacher_path),
+                    "teacher": teacher_path,
                     "temperature": args.temperature,
                     "alpha": args.alpha,
                     "epoch": epoch,
@@ -228,8 +223,9 @@ def main():
                 },
             )
 
-    print(f"最佳 f1={best_f1:.4f} 已保存: {CKPT_DIR}")
+    print(f'最佳 f1={best_f1:.4f} 已保存: {ckpt_dir}')
 
 
 if __name__ == "__main__":
+    # 1. 蒸馏训练入口
     main()

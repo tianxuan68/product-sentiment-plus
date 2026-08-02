@@ -1,44 +1,27 @@
 """
-从 sources 只读整理评论主表，写入 processed（不修改任何源文件）。
+案例:
+    从 sources 只读整理评论主表，写入 processed（不改源文件）。
 
-清洗要点（针对标签噪声与脏文本）：
-  1) 文本规范化：去 HTML/URL、压空白、压缩重复标点/叠字
-  2) 丢弃中性分（评分=3），只保留明确好评(4-5)与差评(1-2)
-  3) 过滤过短/无中文/纯符号垃圾句
-  4) 按 sentence 去重，避免同文多标签干扰
+清洗要点:
+    1) 文本规范化：去 HTML/URL、压空白、压缩叠字叠标点
+    2) 丢掉中性分（评分=3），只留明确好评(4-5)与差评(1-2)
+    3) 过滤过短/无中文/纯符号
+    4) 按 sentence 去重
 
-产出：
-  processed/reviews.csv
-  processed/reviews_train.csv
-  processed/reviews_val.csv
-  processed/reviews_test.csv
+产出:
+    processed/reviews.csv / reviews_train.csv / reviews_val.csv / reviews_test.csv
 
-用法：
-  python prepare_reviews.py
+用法:
+    python prepare_reviews.py
 """
 
-from __future__ import annotations
-
+# 导包
 import hashlib
+import os
 import re
-from pathlib import Path
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
-
-ROOT = Path(__file__).resolve().parents[2]
-SOURCES = ROOT / "sources"
-PROCESSED = ROOT / "processed"
-
-TRAIN_CSV = SOURCES / "训练集.csv"
-TEST_CSV = SOURCES / "测试集.csv"
-PRODUCT_CSV = SOURCES / "商品信息.csv"
-CATEGORY_CSV = SOURCES / "商品类别列表.csv"
-
-OUT_ALL = PROCESSED / "reviews.csv"
-OUT_TRAIN = PROCESSED / "reviews_train.csv"
-OUT_VAL = PROCESSED / "reviews_val.csv"
-OUT_TEST = PROCESSED / "reviews_test.csv"
 
 RANDOM_STATE = 42
 VAL_RATIO = 0.1
@@ -59,9 +42,9 @@ _RE_CN = re.compile(r"[\u4e00-\u9fff]")
 _RE_JUNK_ONLY = re.compile(r"^[\W\d_]+$", re.UNICODE)
 
 
-def file_md5(path: Path, chunk: int = 1 << 20) -> str:
+def file_md5(path, chunk=1 << 20):
     h = hashlib.md5()
-    with path.open("rb") as f:
+    with open(path, "rb") as f:
         while True:
             b = f.read(chunk)
             if not b:
@@ -70,9 +53,14 @@ def file_md5(path: Path, chunk: int = 1 << 20) -> str:
     return h.hexdigest()
 
 
-def snapshot_sources() -> dict[str, str]:
-    files = [TRAIN_CSV, TEST_CSV, PRODUCT_CSV, CATEGORY_CSV]
-    return {str(p): file_md5(p) for p in files if p.exists()}
+def snapshot_sources():
+    files = [
+        "./data/sources/训练集.csv",
+        "./data/sources/测试集.csv",
+        "./data/sources/商品信息.csv",
+        "./data/sources/商品类别列表.csv",
+    ]
+    return {p: file_md5(p) for p in files if os.path.exists(p)}
 
 
 def assert_sources_unchanged(before: dict[str, str]) -> None:
@@ -139,14 +127,14 @@ def rating_to_sentiment(rating: float) -> int | None:
 
 
 def load_category_map() -> dict[str, str]:
-    cate = pd.read_csv(CATEGORY_CSV, encoding="utf-8")
+    cate = pd.read_csv("./data/sources/商品类别列表.csv", encoding="utf-8")
     return dict(
         zip(cate["类别ID"].astype(str), cate["类别名称"].astype(str))
     )
 
 
 def load_product_table(cat_map: dict[str, str]) -> pd.DataFrame:
-    products = pd.read_csv(PRODUCT_CSV, encoding="utf-8")
+    products = pd.read_csv("./data/sources/商品信息.csv", encoding="utf-8")
     products["主类目ID"] = products["所属类别"].map(primary_category_id)
     products["category"] = products["主类目ID"].map(
         lambda x: cat_map.get(str(x), "未知")
@@ -173,7 +161,7 @@ def _base_frame(df: pd.DataFrame) -> pd.DataFrame:
 
 def prepare_train(products: pd.DataFrame) -> pd.DataFrame:
     print("读取训练集...")
-    train = pd.read_csv(TRAIN_CSV, encoding="utf-8")
+    train = pd.read_csv("./data/sources/训练集.csv", encoding="utf-8")
     raw_n = len(train)
     print(f"  原始行数: {raw_n}")
 
@@ -232,7 +220,7 @@ def prepare_train(products: pd.DataFrame) -> pd.DataFrame:
 
 def prepare_test(products: pd.DataFrame) -> pd.DataFrame:
     print("读取官方测试集...")
-    test = pd.read_csv(TEST_CSV, encoding="utf-8")
+    test = pd.read_csv("./data/sources/测试集.csv", encoding="utf-8")
     print(f"  原始行数: {len(test)}")
 
     df = test.merge(products, on="商品ID", how="left")
@@ -323,42 +311,54 @@ def verify(
     print("校验通过: 清洗规则与切分均正确")
 
 
-def main() -> None:
-    print("=" * 50)
-    print("准备评论主表（加强清洗，sources 只读）")
-    print("=" * 50)
+def main():
+    # 1. 说明规则
+    print('-' * 50)
+    print(f'准备评论主表（加强清洗，sources 只读）')
+    print('-' * 50)
     print(
-        f"规则: 好评 rating>={POS_RATING_MIN} | "
-        f"差评 rating<={NEG_RATING_MAX} | "
-        f"中性(3分)丢弃 | 最短{MIN_TEXT_LEN}字 | 至少{MIN_CN_CHARS}个汉字"
+        f'规则: 好评 rating>={POS_RATING_MIN} | '
+        f'差评 rating<={NEG_RATING_MAX} | '
+        f'中性(3分)丢弃 | 最短{MIN_TEXT_LEN}字 | 至少{MIN_CN_CHARS}个汉字'
     )
 
+    # 2. 快照 sources，防误写
     before = snapshot_sources()
-    print("sources MD5 快照已记录")
+    print(f'sources MD5 快照已记录')
 
+    # 3. 加载商品 / 类别
     cat_map = load_category_map()
     products = load_product_table(cat_map)
-    print(f"商品表: {len(products)} | 类别映射: {len(cat_map)}")
+    print(f'商品表: {len(products)} | 类别映射: {len(cat_map)}')
 
+    # 4. 清洗 + 切分
     reviews = prepare_train(products)
     test_df = prepare_test(products)
     train_df, val_df = split_train_val(reviews)
 
-    PROCESSED.mkdir(parents=True, exist_ok=True)
-    reviews.to_csv(OUT_ALL, index=False, encoding="utf-8-sig")
-    train_df.to_csv(OUT_TRAIN, index=False, encoding="utf-8-sig")
-    val_df.to_csv(OUT_VAL, index=False, encoding="utf-8-sig")
-    test_df.to_csv(OUT_TEST, index=False, encoding="utf-8-sig")
+    # 5. 写入 processed
+    out_all = "./data/processed/reviews.csv"
+    out_train = "./data/processed/reviews_train.csv"
+    out_val = "./data/processed/reviews_val.csv"
+    out_test = "./data/processed/reviews_test.csv"
 
-    print("=" * 50)
-    print("已写入 processed（未改 sources）")
-    print("=" * 50)
-    for p in (OUT_ALL, OUT_TRAIN, OUT_VAL, OUT_TEST):
-        print(f"  {p.name}: {p.stat().st_size} bytes")
+    os.makedirs("./data/processed", exist_ok=True)
+    reviews.to_csv(out_all, index=False, encoding="utf-8-sig")
+    train_df.to_csv(out_train, index=False, encoding="utf-8-sig")
+    val_df.to_csv(out_val, index=False, encoding="utf-8-sig")
+    test_df.to_csv(out_test, index=False, encoding="utf-8-sig")
 
+    print('-' * 50)
+    print(f'已写入 processed（未改 sources）')
+    print('-' * 50)
+    for p in (out_all, out_train, out_val, out_test):
+        print(f'  {os.path.basename(p)}: {os.path.getsize(p)} bytes')
+
+    # 6. 校验
     verify(reviews, train_df, val_df, test_df)
     assert_sources_unchanged(before)
 
 
 if __name__ == "__main__":
+    # 1. 跑数据准备
     main()

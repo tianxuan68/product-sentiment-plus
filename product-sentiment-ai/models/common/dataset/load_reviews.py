@@ -1,31 +1,35 @@
-"""统一读取 processed 评论切分。"""
+"""
+案例:
+    统一读取 processed 评论切分。
 
-from __future__ import annotations
+大白话:
+    train/val/test 都从这里读，训练脚本别各自拼路径。
+"""
 
-from pathlib import Path
+# 导包
+import os
 
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parents[3]
-PROCESSED = ROOT / "data" / "processed"
 
-
-def load_split(name: str = "train") -> pd.DataFrame:
+# 1. 定义函数, 读某个切分
+def load_split(name="train"):
     mapping = {
-        "train": PROCESSED / "reviews_train.csv",
-        "val": PROCESSED / "reviews_val.csv",
-        "all": PROCESSED / "reviews.csv",
-        "test": PROCESSED / "reviews_test.csv",
+        "train": "./data/processed/reviews_train.csv",
+        "val": "./data/processed/reviews_val.csv",
+        "all": "./data/processed/reviews.csv",
+        "test": "./data/processed/reviews_test.csv",
     }
     path = mapping[name]
-    if not path.exists():
+    if not os.path.exists(path):
         raise FileNotFoundError(
             f"缺少 {path}，请先运行 data/scripts/preprocess/prepare_reviews.py"
         )
     return pd.read_csv(path, encoding="utf-8-sig")
 
 
-def load_xy(name: str = "train"):
+# 2. 定义函数, 读成 x / y
+def load_xy(name="train"):
     df = load_split(name)
     if "sentiment" not in df.columns:
         raise ValueError(f"{name} 无 sentiment 列，不能用于有监督训练")
