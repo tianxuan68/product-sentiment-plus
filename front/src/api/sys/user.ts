@@ -108,7 +108,7 @@ export function doLogout() {
 
 export function getCodeInfo(currdatetime) {
   let url = Api.getInputCode + `/${currdatetime}`;
-  return defHttp.get({ url: url });
+  return defHttp.get({ url: url }, { errorMessageMode: 'none' });
 }
 /**
  * @description: 获取短信验证码
@@ -185,7 +185,7 @@ export function thirdLogin(params, mode: ErrorMessageMode = 'modal') {
  * @description: 第三方登录可用渠道（GitHub/微信/钉钉等）
  */
 export function getThirdLoginConfig() {
-  return defHttp.get({ url: Api.thirdLoginConfig });
+  return defHttp.get({ url: Api.thirdLoginConfig }, { errorMessageMode: 'none' });
 }
 /**
  * @description: 获取第三方短信验证码

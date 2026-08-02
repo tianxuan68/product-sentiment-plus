@@ -1,0 +1,12 @@
+fastapi==0.115.6
+uvicorn==0.33.0
+sqlalchemy==2.0.36
+pymysql==1.1.1
+pydantic-settings==2.7.1
+python-dotenv==1.0.1
+python-jose[cryptography]==3.3.0
+pycryptodome==3.21.0
+python-multipart==0.0.20
+Pillow==10.4.0
+httpx==0.28.1
+eval-type-backport==0.4.0

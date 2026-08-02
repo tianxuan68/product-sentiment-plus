@@ -34,10 +34,34 @@ export const LoginRoute: AppRouteRecordRaw = {
   name: 'Login',
   //新版后台登录，如果想要使用旧版登录放开即可
   // component: () => import('/@/views/sys/login/Login.vue'),
-  component: () => import('/@/views/system/loginmini/MiniLogin.vue'),
+  component: () => import('/@/views/sys/login/Login.vue'),
   meta: {
     title: t('routes.basic.login'),
   },
+};
+
+export const WelcomeRoute: AppRouteRecordRaw = {
+  path: PageEnum.BASE_WELCOME,
+  name: 'Welcome',
+  component: () => import('/@/views/sys/welcome/LegacyWelcome.vue'),
+  meta: {
+    title: 'Sentiment',
+    ignoreAuth: false,
+  },
+};
+
+export const UserHomeRoute: AppRouteRecordRaw = {
+  path: PageEnum.BASE_HOME,
+  name: 'UserHome',
+  component: () => import('/@/views/sys/welcome/Welcome.vue'),
+  meta: { title: 'Sentiment', ignoreAuth: false, hideMenu: true, hideBreadcrumb: true },
+};
+
+export const InsightRoute: AppRouteRecordRaw = {
+  path: '/system/user/insight',
+  name: 'InsightWorkspace',
+  component: () => import('/@/views/sys/insight/Insight.vue'),
+  meta: { title: '情绪洞察', ignoreAuth: false, hideMenu: true, hideBreadcrumb: true },
 };
 
 // 代码逻辑说明: auth2登录页面路由------------
@@ -65,4 +89,4 @@ export const TokenLoginRoute: AppRouteRecordRaw = {
   },
 };
 // Basic routing without permission
-export const basicRoutes = [LoginRoute, RootRoute, ...mainOutRoutes, REDIRECT_ROUTE, PAGE_NOT_FOUND_ROUTE, TokenLoginRoute, Oauth2LoginRoute];
+export const basicRoutes = [LoginRoute, WelcomeRoute, UserHomeRoute, InsightRoute, RootRoute, ...mainOutRoutes, REDIRECT_ROUTE, PAGE_NOT_FOUND_ROUTE, TokenLoginRoute, Oauth2LoginRoute];

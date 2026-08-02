@@ -1,0 +1,1 @@
+export function Footer() { return <footer className="site-footer"><div className="footer-brand"><span className="brand-orb">✦</span><span>澄见</span></div><p>让每一个真实的声音，都被温柔地看见。</p><span className="footer-meta">© 2026 Insight · Made for clarity</span></footer>; }

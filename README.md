@@ -67,3 +67,16 @@ data/sources
 | `data/examples/review_tags.csv` | 评论标签明细 |
 | `data/examples/product_tags.csv` | 商品标签墙 |
 | `data/examples/category_tag_vocab.csv` | 品类标签字典 |
+
+
+## 后端启动
+'''
+.\.venv\Scripts\python.exe backend\run.py
+'''
+    
+## 前端启动
+
+ '''
+cd front
+pnpm dev
+'''

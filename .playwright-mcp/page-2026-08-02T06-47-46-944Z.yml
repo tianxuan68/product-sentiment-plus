@@ -1,0 +1,16 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e4]:
+    - img "Logo" [ref=e5]
+    - generic [ref=e12]: Sentiment-Plus
+  - img:
+    - generic "Asset 91"
+    - generic "Asset 15"
+    - generic "Asset 16"
+    - generic "Asset 17"
+    - generic "Asset 120"
+    - generic "Asset 110"
+    - generic "Asset 100"
+    - generic "Icon1@3x"
+    - generic "Asset 500"
+    - generic "Asset 480": "%"
+    - generic "Asset 510"

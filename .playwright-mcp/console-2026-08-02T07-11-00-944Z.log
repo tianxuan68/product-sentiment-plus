@@ -1,0 +1,105 @@
+[    1879ms] [LOG]  --- 构建后台路由菜单 ---  @ http://127.0.0.1:3100/src/store/modules/permission.ts?t=1785654601126:150
+[    2803ms] [LOG]  vue3 app 加载完成！ @ http://127.0.0.1:3100/src/main.ts?t=1785654601126:49
+[    3415ms] [LOG] storePathTitle /system/user @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654601126:74
+[   83361ms] [LOG] storePathTitle /system/role @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654601126:74
+[   84748ms] [LOG] storePathTitle /system/menu @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654601126:74
+[   85547ms] [LOG] storePathTitle /system/depart @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654601126:74
+[   85709ms] [LOG] onTreeSelect:  Proxy(Object) @ http://127.0.0.1:3100/src/views/system/depart/index.vue?t=1785654601126:29
+[   86185ms] [LOG] storePathTitle /system/dict @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654601126:74
+[   94600ms] [LOG]  --- 构建后台路由菜单 ---  @ http://127.0.0.1:3100/src/store/modules/permission.ts?t=1785654601126:150
+[   94900ms] [LOG]  vue3 app 加载完成！ @ http://127.0.0.1:3100/src/main.ts?t=1785654601126:49
+[   95029ms] [LOG] storePathTitle /system/dict @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654601126:74
+[   96282ms] [LOG] storePathTitle /system/user @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654601126:74
+[   99107ms] [LOG] storePathTitle /system/dict @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654601126:74
+[  100197ms] [LOG] storePathTitle /system/user @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654601126:74
+[  108148ms] [LOG] storePathTitle /system/user @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654601126:74
+[  109559ms] [LOG] storePathTitle /system/role @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654601126:74
+[  110347ms] [LOG] storePathTitle /system/menu @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654601126:74
+[  111039ms] [LOG] storePathTitle /system/depart @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654601126:74
+[  111222ms] [LOG] onTreeSelect:  Proxy(Object) @ http://127.0.0.1:3100/src/views/system/depart/index.vue?t=1785654601126:29
+[  112279ms] [LOG] storePathTitle /system/dict @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654601126:74
+[  116376ms] [LOG] storePathTitle /system/user @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654601126:74
+[  144437ms] [LOG] storePathTitle /system/role @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654601126:74
+[  144873ms] [LOG] storePathTitle /system/menu @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654601126:74
+[  145368ms] [LOG] storePathTitle /system/depart @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654601126:74
+[  145460ms] [LOG] onTreeSelect:  Proxy(Object) @ http://127.0.0.1:3100/src/views/system/depart/index.vue?t=1785654601126:29
+[  146838ms] [LOG] storePathTitle /system/dict @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654601126:74
+[  148283ms] [LOG] storePathTitle /system/user @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654601126:74
+[  199099ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "username"): (More info: https://goo.gl/9p2vKq) %o @ http://127.0.0.1:3100/system/user:0
+[  199099ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "new-password"): (More info: https://goo.gl/9p2vKq) %o @ http://127.0.0.1:3100/system/user:0
+[  253533ms] [ERROR] Failed to load resource: the server responded with a status of 422 (Unprocessable Entity) @ http://127.0.0.1:3100/jeecgboot/sys/duplicate/check?tableName=sys_user&fieldName=work_no&_t=1785654914445:0
+[  253538ms] [ERROR] Failed to load resource: the server responded with a status of 422 (Unprocessable Entity) @ http://127.0.0.1:3100/jeecgboot/sys/duplicate/check?tableName=sys_user&fieldName=email&_t=1785654914445:0
+[  253550ms] [WARNING] [Vue warn]: Unhandled error during execution of component event handler 
+  at <BasicDrawer onRegister=fn<register> title="新增用户" width=650  ... > 
+  at <UserDrawer onRegister=fn<register> onSuccess=fn<handleSuccess> > 
+  at <SystemUser onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< Proxy(Object) > key="/system/user" > 
+  at <KeepAlive key=0 include= [system-user, system-role] > 
+  at <RouterView> 
+  at <PageLayout> 
+  at <LayoutContent> 
+  at <Anonymous hasSider=undefined prefixCls="ant-layout" tagName="section"  ... > 
+  at <ALayout class="jeecg-default-layout-main" > 
+  at <Anonymous hasSider=undefined prefixCls="ant-layout" tagName="section"  ... > 
+  at <ALayout class="ant-layout ant-layout-has-sider" > 
+  at <Anonymous hasSider=undefined prefixCls="ant-layout" tagName="section"  ... > 
+  at <ALayout class="jeecg-default-layout jeecg-default-layout--menu-mix" > 
+  at <DefaultLayout onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< Proxy(Object) > > 
+  at <RouterView> 
+  at <AppProvider> 
+  at <AsyncComponentWrapper> 
+  at <Anonymous value= {hashed: true, components: Object, theme: undefined, token: Object} > 
+  at <ALocaleProvider locale= {locale: zh-cn, Pagination: Object, DatePicker: Object, TimePicker: Object, Calendar: Object} ANT_MARK__="internalMark" > 
+  at <LocaleReceiver children=fn<children> > 
+  at <AConfigProvider theme= {token: Object} locale= {locale: zh-cn, Pagination: Object, DatePicker: Object, TimePicker: Object, Calendar: Object} > 
+  at <App> @ http://127.0.0.1:3100/node_modules/.vite/deps/chunk-YP4KB636.js?v=247df112:1934
+[  253560ms] Object
+[  283274ms] [ERROR] Failed to load resource: the server responded with a status of 422 (Unprocessable Entity) @ http://127.0.0.1:3100/jeecgboot/sys/duplicate/check?tableName=sys_user&fieldName=work_no&_t=1785654944196:0
+[  283292ms] [WARNING] [Vue warn]: Unhandled error during execution of component event handler 
+  at <BasicDrawer onRegister=fn<register> title="新增用户" width=650  ... > 
+  at <UserDrawer onRegister=fn<register> onSuccess=fn<handleSuccess> > 
+  at <SystemUser onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< Proxy(Object) > key="/system/user" > 
+  at <KeepAlive key=0 include= [system-user, system-role] > 
+  at <RouterView> 
+  at <PageLayout> 
+  at <LayoutContent> 
+  at <Anonymous hasSider=undefined prefixCls="ant-layout" tagName="section"  ... > 
+  at <ALayout class="jeecg-default-layout-main" > 
+  at <Anonymous hasSider=undefined prefixCls="ant-layout" tagName="section"  ... > 
+  at <ALayout class="ant-layout ant-layout-has-sider" > 
+  at <Anonymous hasSider=undefined prefixCls="ant-layout" tagName="section"  ... > 
+  at <ALayout class="jeecg-default-layout jeecg-default-layout--menu-mix" > 
+  at <DefaultLayout onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< Proxy(Object) > > 
+  at <RouterView> 
+  at <AppProvider> 
+  at <AsyncComponentWrapper> 
+  at <Anonymous value= {hashed: true, components: Object, theme: undefined, token: Object} > 
+  at <ALocaleProvider locale= {locale: zh-cn, Pagination: Object, DatePicker: Object, TimePicker: Object, Calendar: Object} ANT_MARK__="internalMark" > 
+  at <LocaleReceiver children=fn<children> > 
+  at <AConfigProvider theme= {token: Object} locale= {locale: zh-cn, Pagination: Object, DatePicker: Object, TimePicker: Object, Calendar: Object} > 
+  at <App> @ http://127.0.0.1:3100/node_modules/.vite/deps/chunk-YP4KB636.js?v=247df112:1934
+[  283295ms] Object
+[  285640ms] [ERROR] Failed to load resource: the server responded with a status of 422 (Unprocessable Entity) @ http://127.0.0.1:3100/jeecgboot/sys/duplicate/check?tableName=sys_user&fieldName=work_no&_t=1785654946557:0
+[  285655ms] [WARNING] [Vue warn]: Unhandled error during execution of component event handler 
+  at <BasicDrawer onRegister=fn<register> title="新增用户" width=650  ... > 
+  at <UserDrawer onRegister=fn<register> onSuccess=fn<handleSuccess> > 
+  at <SystemUser onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< Proxy(Object) > key="/system/user" > 
+  at <KeepAlive key=0 include= [system-user, system-role] > 
+  at <RouterView> 
+  at <PageLayout> 
+  at <LayoutContent> 
+  at <Anonymous hasSider=undefined prefixCls="ant-layout" tagName="section"  ... > 
+  at <ALayout class="jeecg-default-layout-main" > 
+  at <Anonymous hasSider=undefined prefixCls="ant-layout" tagName="section"  ... > 
+  at <ALayout class="ant-layout ant-layout-has-sider" > 
+  at <Anonymous hasSider=undefined prefixCls="ant-layout" tagName="section"  ... > 
+  at <ALayout class="jeecg-default-layout jeecg-default-layout--menu-mix" > 
+  at <DefaultLayout onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< Proxy(Object) > > 
+  at <RouterView> 
+  at <AppProvider> 
+  at <AsyncComponentWrapper> 
+  at <Anonymous value= {hashed: true, components: Object, theme: undefined, token: Object} > 
+  at <ALocaleProvider locale= {locale: zh-cn, Pagination: Object, DatePicker: Object, TimePicker: Object, Calendar: Object} ANT_MARK__="internalMark" > 
+  at <LocaleReceiver children=fn<children> > 
+  at <AConfigProvider theme= {token: Object} locale= {locale: zh-cn, Pagination: Object, DatePicker: Object, TimePicker: Object, Calendar: Object} > 
+  at <App> @ http://127.0.0.1:3100/node_modules/.vite/deps/chunk-YP4KB636.js?v=247df112:1934
+[  285658ms] Object
