@@ -1,0 +1,125 @@
+# 类目专属属性：对外 JSON 用英文 key；读 train.csv 的 attributes 用 zh 对齐
+# category 名与 CSV「类别」列一致（中文）
+
+categories:
+  图书音像:
+    content: 内容
+    printing: 印刷
+    paper: 纸张
+    cover: 封面
+    layout: 排版
+    illustration: 插图
+    genuine: 正版
+  电脑/办公:
+    performance: 性能
+    speed: 速度
+    keyboard: 键盘
+    system: 系统
+    sound: 音质
+    signal: 信号
+    portability: 便携
+    cooling: 散热
+  手机/数码:
+    battery: 电池
+    screen: 屏幕
+    camera: 相机
+    system: 系统
+    signal: 信号
+    memory: 内存
+    pixel: 像素
+    feel: 手感
+  美妆个护:
+    effect: 效果
+    moisturizing: 保湿
+    nourishing: 滋润
+    texture: 质地
+    scent: 香味
+    mildness: 温和
+    absorption: 吸收
+    color: 颜色
+  家用电器:
+    noise: 噪音
+    effect: 效果
+    function: 功能
+    installation: 安装
+    power: 耗电
+    capacity: 容量
+    cleaning: 清洁
+    safety: 安全
+  家居生活:
+    material: 材质
+    capacity: 容量
+    insulation: 保温
+    sealing: 密封
+    durability: 耐用
+    cleaning: 清洁
+    size: 大小
+    color: 颜色
+  母婴/玩具:
+    safety: 安全
+    material: 材质
+    comfort: 舒适
+    smell: 味道
+    size: 尺寸
+    usability: 易用
+    cleaning: 清洁
+    durability: 耐用
+  家具/家装/建材:
+    installation: 安装
+    assembly: 组装
+    sturdy: 结实
+    material: 材质
+    size: 尺寸
+    color: 颜色
+    accessories: 配件
+    stability: 稳固
+  钟表/首饰/眼镜/礼品:
+    appearance: 外观
+    material: 材质
+    size: 尺寸
+    craftsmanship: 做工
+    color: 颜色
+    accuracy: 精准
+    lightweight: 轻巧
+  食品/保健:
+    taste: 味道
+    mouthfeel: 口感
+    freshness: 新鲜
+    shelf_life: 保质期
+    portion: 份量
+    effect: 效果
+    nutrition: 营养
+  鞋类箱包:
+    size: 尺码
+    comfort: 舒适
+    material: 材质
+    color: 颜色
+    style: 款式
+    durability: 耐用
+    craftsmanship: 做工
+    lightweight: 轻便
+  运动户外:
+    weight: 重量
+    comfort: 舒适
+    material: 材质
+    anti_slip: 防滑
+    durability: 耐用
+    design: 设计
+    breathability: 透气
+    waterproof: 防水
+  服饰服装:
+    size: 尺码
+    fabric: 面料
+    color: 颜色
+    fit: 版型
+    comfort: 舒适
+    warmth: 保暖
+    craftsmanship: 做工
+    thickness: 薄厚
+  机票/充值/票务/虚拟:
+    content: 内容
+    convenience: 便捷
+    validity: 有效期
+    usage: 使用
+    after_sales: 售后
+  其他: {}

@@ -1,0 +1,39 @@
+# 类目 BERT 公共配置（相对路径相对 product-sentiment-ai 根目录）
+
+model_name: models/pretrained/bert-base-chinese
+aspects_vocab: models/bert/category/configs/aspects_vocab.yaml
+
+# 原表字段名与队员统一；不另建宽表文件，训练时内存里转英文 key
+data:
+  raw_csv: models/bert/category/data/raw/train.csv
+  processed_dir: models/bert/category/data/processed
+  train_file: train.csv
+  val_file: val.csv
+  test_file: test.csv
+  text_col: 评论内容_clean
+  category_col: 类别
+  attributes_col: attributes
+  val_ratio: 0.1
+  test_ratio: 0.1
+
+# 训练模式：
+#   all          = 多类目：一次把有属性的类目都训完（每类目各自 checkpoint）
+#   服饰服装 等  = 单类目：只训/评估一个品类（正式看效果推荐先这样 + 全量）
+category: all
+
+max_length: 128
+learning_rate: 2.0e-5
+batch_size: 16
+epochs: 3
+optimizer: AdamW
+weight_decay: 0.01
+warmup_ratio: 0.1
+random_seed: 68
+
+# 每类目随机条数（类目内 random，不是文件前 N 行）
+# 冒烟建议 200；15 太小指标会很差；正式全量改为 ~
+max_train_samples: ~
+max_val_samples: ~
+
+output_dir: models/bert/category/checkpoints
+metrics_dir: models/bert/category/results
