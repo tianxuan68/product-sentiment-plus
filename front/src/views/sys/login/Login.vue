@@ -6,6 +6,18 @@
     @pointermove="handlePointerMove"
   >
     <div class="ocean-backdrop" aria-hidden="true">
+      <video
+        class="ocean-bg-video"
+        autoplay
+        muted
+        loop
+        playsinline
+        preload="auto"
+        poster="/resource/img/maldives-surface.png"
+      >
+        <source src="/resource/img/ocean-surface.mp4" type="video/mp4" />
+      </video>
+      <div class="ocean-bg-veil" />
       <div class="ocean-sun" />
       <div ref="cursorLight" class="ocean-cursor-light" />
       <div class="ocean-haze ocean-haze-one" />
@@ -218,12 +230,39 @@
       z-index: -2;
       overflow: hidden;
       background-color: #087c8d;
-      background-image:
-        linear-gradient(112deg, rgba(3, 50, 66, 0.54), rgba(13, 164, 170, 0.2) 55%, rgba(255, 224, 146, 0.28)),
-        url('/resource/img/maldives-surface.png');
-      background-position: center, center;
-      background-size: cover, cover;
-      background-blend-mode: multiply, screen;
+    }
+
+    // 海水视频背景：向右旋转 90° 铺满视口
+    .ocean-bg-video {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      z-index: 0;
+      width: 100vh;
+      height: 100vw;
+      min-width: 100vh;
+      min-height: 100vw;
+      object-fit: cover;
+      transform: translate(-50%, -50%) rotate(90deg);
+      transform-origin: center center;
+      pointer-events: none;
+    }
+
+    .ocean-bg-veil {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background: linear-gradient(112deg, rgba(3, 50, 66, 0.54), rgba(13, 164, 170, 0.2) 55%, rgba(255, 224, 146, 0.28));
+      pointer-events: none;
+    }
+
+    .ocean-sun,
+    .ocean-cursor-light,
+    .ocean-haze,
+    .ocean-surface,
+    .ocean-ripples,
+    .ocean-grain {
+      z-index: 2;
     }
 
     .ocean-sun {
@@ -354,12 +393,40 @@
     .ocean-form-wrap form { padding: 0; }
     .ocean-form-wrap .ant-form-item { margin-bottom: 18px; }
     .ocean-form-wrap .ant-input-affix-wrapper,
-    .ocean-form-wrap .ant-input { min-width: 0; border: 1px solid rgba(235, 255, 249, 0.22); border-radius: 13px; color: #fff; background: rgba(235, 255, 249, 0.1); box-shadow: none; }
+    .ocean-form-wrap .ant-input {
+      min-width: 0;
+      border: 1px solid rgba(235, 255, 249, 0.22);
+      border-radius: 13px;
+      color: #fff;
+      background: rgba(235, 255, 249, 0.1) !important;
+      box-shadow: none;
+    }
+    /* 密码框内层 / autofill 默认白底盖掉玻璃态 */
+    .ocean-form-wrap .ant-input-affix-wrapper > input.ant-input,
+    .ocean-form-wrap .ant-input-password input.ant-input {
+      color: #fff;
+      background: transparent !important;
+      box-shadow: none !important;
+    }
     .ocean-form-wrap .ant-input-affix-wrapper:hover,
-    .ocean-form-wrap .ant-input-affix-wrapper:focus-within { border-color: rgba(255, 236, 172, 0.85); background: rgba(235, 255, 249, 0.16); box-shadow: 0 0 0 3px rgba(255, 224, 162, 0.1); }
+    .ocean-form-wrap .ant-input-affix-wrapper:focus-within {
+      border-color: rgba(255, 236, 172, 0.85);
+      background: rgba(235, 255, 249, 0.16) !important;
+      box-shadow: 0 0 0 3px rgba(255, 224, 162, 0.1);
+    }
     .ocean-form-wrap .ant-input::placeholder,
     .ocean-form-wrap .ant-input-affix-wrapper input::placeholder { color: rgba(239, 255, 250, 0.52); }
     .ocean-form-wrap .ant-input-prefix, .ocean-form-wrap .ant-input-password-icon { color: rgba(235, 255, 249, 0.7); }
+    .ocean-form-wrap input:-webkit-autofill,
+    .ocean-form-wrap input:-webkit-autofill:hover,
+    .ocean-form-wrap input:-webkit-autofill:focus,
+    .ocean-form-wrap .ant-input-affix-wrapper > input.ant-input:-webkit-autofill {
+      -webkit-text-fill-color: #fff !important;
+      caret-color: #fff;
+      transition: background-color 99999s ease-in-out 0s !important;
+      -webkit-box-shadow: 0 0 0 1000px rgba(8, 84, 102, 0.92) inset !important;
+      box-shadow: 0 0 0 1000px rgba(8, 84, 102, 0.92) inset !important;
+    }
     .ocean-form-wrap .ant-btn-primary { height: 48px; border: 0; border-radius: 13px; color: #064459; font-weight: 700; background: linear-gradient(110deg, #fff1b2, #b6f4dd); box-shadow: 0 14px 30px rgba(255, 221, 153, 0.2); }
     .ocean-form-wrap .ant-btn-primary:hover { color: #064459; background: linear-gradient(110deg, #fff7ce, #d0ffed); transform: translateY(-1px); }
     .ocean-form-wrap .ant-checkbox-wrapper, .ocean-form-wrap .ant-btn-link, .ocean-form-wrap .ant-divider-inner-text { color: rgba(239, 255, 250, 0.65); }

@@ -1,8 +1,11 @@
-"""初始化精简版数据库并验证登录链路。
+"""用唯一部署 SQL（sql/jeecgboot-slim.sql）初始化数据库并验证登录链路。
 
 请在 backend 目录下运行:
     python -m scripts.init_slim_db
     python -m scripts.init_slim_db --host 127.0.0.1 --user root --password xxx
+
+重新从评论数据集生成 SQL:
+    python -m scripts.build_deploy_sql
 """
 
 # 导包
@@ -40,22 +43,38 @@ def load_env_defaults() -> dict:
 
 
 def run_sql_file(conn, sql_path):
-    with open(sql_path, "r", encoding="utf-8") as f:
-        content = f.read()
-    statements = []
-    buf = []
-    for line in content.splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("--"):
-            continue
-        buf.append(line)
-        if stripped.endswith(";"):
-            statements.append("\n".join(buf))
-            buf = []
+    """流式按分号切语句执行，支持大体积全量数据集 SQL。"""
     with conn.cursor() as cur:
-        for stmt in statements:
-            cur.execute(stmt)
+        try:
+            cur.execute("SET GLOBAL max_allowed_packet=536870912")
+        except Exception:
+            # 无 SUPER 权限时忽略；分批 INSERT 一般不需要改包大小
+            pass
+        cur.execute("SET NAMES utf8mb4")
+        cur.execute("SET FOREIGN_KEY_CHECKS=0")
+
+        buf: list[str] = []
+        executed = 0
+        with open(sql_path, "r", encoding="utf-8") as f:
+            for line in f:
+                stripped = line.strip()
+                if not stripped or stripped.startswith("--"):
+                    continue
+                buf.append(line.rstrip("\n"))
+                if stripped.endswith(";"):
+                    stmt = "\n".join(buf)
+                    buf = []
+                    cur.execute(stmt)
+                    executed += 1
+                    if executed % 50 == 0:
+                        conn.commit()
+                        print(f"  executed statements: {executed}")
+        if buf:
+            cur.execute("\n".join(buf))
+            executed += 1
+        cur.execute("SET FOREIGN_KEY_CHECKS=1")
     conn.commit()
+    print(f"  total statements: {executed}")
 
 
 def verify_backend(db_url: str) -> None:

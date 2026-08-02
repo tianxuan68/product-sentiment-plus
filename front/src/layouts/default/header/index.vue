@@ -23,6 +23,8 @@
 
     <!-- action  -->
     <div :class="`${prefixCls}-action`">
+      <FrontHomeLink />
+
       <AppSearch :class="`${prefixCls}-action__item `" v-if="getShowSearch" />
 
       <ErrorAction v-if="getUseErrorHandle" :class="`${prefixCls}-action__item error-action`" />
@@ -62,7 +64,7 @@
   import { SettingButtonPositionEnum } from '/@/enums/appEnum';
   import { AppLocalePicker } from '/@/components/Application';
 
-  import { UserDropDown, LayoutBreadcrumb, FullScreen, Notify, ErrorAction, LockScreen } from './components';
+  import { UserDropDown, LayoutBreadcrumb, FullScreen, Notify, ErrorAction, LockScreen, FrontHomeLink } from './components';
   import { useAppInject } from '/@/hooks/web/useAppInject';
   import { useDesign } from '/@/hooks/web/useDesign';
 
@@ -89,6 +91,7 @@
       AppSearch,
       ErrorAction,
       LockScreen,
+      FrontHomeLink,
       LoginSelect,
       SettingDrawer: createAsyncComponent(() => import('/@/layouts/default/setting/index.vue'), {
         loading: true,

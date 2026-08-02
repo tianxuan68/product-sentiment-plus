@@ -58,10 +58,18 @@ export const UserHomeRoute: AppRouteRecordRaw = {
 };
 
 export const InsightRoute: AppRouteRecordRaw = {
-  path: '/system/user/insight',
+  path: PageEnum.BASE_INSIGHT,
   name: 'InsightWorkspace',
   component: () => import('/@/views/sys/insight/Insight.vue'),
   meta: { title: '情绪洞察', ignoreAuth: false, hideMenu: true, hideBreadcrumb: true },
+};
+
+/** 旧前台路径兼容：洞察页曾挂在 /system/user/insight */
+export const LegacyInsightRedirectRoute: AppRouteRecordRaw = {
+  path: '/system/user/insight',
+  name: 'LegacyInsightRedirect',
+  redirect: PageEnum.BASE_INSIGHT,
+  meta: { hideMenu: true, ignoreAuth: false },
 };
 
 // 代码逻辑说明: auth2登录页面路由------------
@@ -89,4 +97,16 @@ export const TokenLoginRoute: AppRouteRecordRaw = {
   },
 };
 // Basic routing without permission
-export const basicRoutes = [LoginRoute, WelcomeRoute, UserHomeRoute, InsightRoute, RootRoute, ...mainOutRoutes, REDIRECT_ROUTE, PAGE_NOT_FOUND_ROUTE, TokenLoginRoute, Oauth2LoginRoute];
+export const basicRoutes = [
+  LoginRoute,
+  WelcomeRoute,
+  UserHomeRoute,
+  InsightRoute,
+  LegacyInsightRedirectRoute,
+  RootRoute,
+  ...mainOutRoutes,
+  REDIRECT_ROUTE,
+  PAGE_NOT_FOUND_ROUTE,
+  TokenLoginRoute,
+  Oauth2LoginRoute,
+];

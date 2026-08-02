@@ -1,5 +1,6 @@
 import { createAsyncComponent } from '/@/utils/factory/createAsyncComponent';
 import FullScreen from './FullScreen.vue';
+import FrontHomeLink from './FrontHomeLink.vue';
 
 export const UserDropDown = createAsyncComponent(() => import('./user-dropdown/index.vue'), {
   loading: true,
@@ -13,4 +14,4 @@ export const ErrorAction = createAsyncComponent(() => import('./ErrorAction.vue'
 
 export const LockScreen = createAsyncComponent(() => import('./LockScreen.vue'));
 
-export { FullScreen };
+export { FullScreen, FrontHomeLink };

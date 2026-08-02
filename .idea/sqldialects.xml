@@ -2,6 +2,5 @@
 <project version="4">
   <component name="SqlDialectMappings">
     <file url="file://$PROJECT_DIR$/backend/sql/jeecgboot-slim.sql" dialect="MySQL" />
-    <file url="file://$PROJECT_DIR$/backend/sql/patch_remove_sentiment.sql" dialect="GenericSQL" />
   </component>
 </project>

@@ -2,6 +2,13 @@
 
 电商评论情感分析 + 拼多多式商品动态标签墙。
 
+## 部署（推荐从这里开始）
+
+傻瓜式 Windows 部署（装库 / 一键启动 / 登录验收）：
+
+→ **[`DEPLOY.md`](DEPLOY.md)**  
+→ 一键启动脚本：`deploy/start-all.bat`
+
 AI 训练与数据处理在子目录 **`product-sentiment-ai/`**，技术说明、训练步骤见：
 
 → [`product-sentiment-ai/README.md`](product-sentiment-ai/README.md)

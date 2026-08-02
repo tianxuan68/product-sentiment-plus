@@ -1,7 +1,7 @@
 <template>
   <main class="insight-page">
     <header class="insight-nav">
-      <button class="insight-brand" type="button" @click="router.push('/system/user')">
+      <button class="insight-brand" type="button" @click="router.push(PageEnum.BASE_HOME)">
         <span class="brand-mark"><i /><i /><i /></span>
         <b class="brand-word">Sentiment</b>
       </button>
@@ -110,6 +110,7 @@
   import { nextTick, ref } from 'vue';
   import { useRouter } from 'vue-router';
   import { predictSentiment, saveProductDraft, type ProductDraft, type SentimentPredictResult } from '/@/api/sentiment';
+  import { PageEnum } from '/@/enums/pageEnum';
   import { useUserStore } from '/@/store/modules/user';
 
   type ChatRole = 'user' | 'assistant' | 'system';

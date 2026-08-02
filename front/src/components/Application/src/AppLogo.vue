@@ -1,23 +1,20 @@
 <!--
- * @Author: Jeecg
- * @Description: logo component
+ * Sentiment 品牌 Logo：与前台 home-nav brand-mark 一致
 -->
 <template>
   <div class="anticon" :class="getAppLogoClass" @click="goHome">
-    <img src="../../../assets/images/logo.png" />
+    <span class="sentiment-brand-mark" aria-hidden="true"><i /><i /><i /></span>
     <div class="ml-2 truncate md:opacity-100" :class="getTitleClass" v-show="showTitle">
-      {{ shortTitle }}
+      {{ brandTitle }}
     </div>
   </div>
 </template>
 <script lang="ts" setup>
   import { computed, unref } from 'vue';
-  import { useGlobSetting } from '/@/hooks/setting';
   import { useGo } from '/@/hooks/web/usePage';
   import { useMenuSetting } from '/@/hooks/setting/useMenuSetting';
   import { useDesign } from '/@/hooks/web/useDesign';
   import { PageEnum } from '/@/enums/pageEnum';
-  import { useUserStore } from '/@/store/modules/user';
 
   const props = defineProps({
     /**
@@ -36,10 +33,8 @@
 
   const { prefixCls } = useDesign('app-logo');
   const { getCollapsedShowTitle } = useMenuSetting();
-  const userStore = useUserStore();
-  const { title, shortTitle } = useGlobSetting();
-  
   const go = useGo();
+  const brandTitle = 'Sentiment';
 
   const getAppLogoClass = computed(() => [prefixCls, props.theme, { 'collapsed-show-title': unref(getCollapsedShowTitle) }]);
 
@@ -51,7 +46,8 @@
   ]);
 
   function goHome() {
-    go(userStore.getUserInfo.homePath || PageEnum.BASE_HOME);
+    // 前后台同一 SPA / 同一 TOKEN__：点 Logo 回前台首页
+    go(PageEnum.BASE_HOME);
   }
 </script>
 <style lang="less" scoped>
@@ -63,20 +59,18 @@
     padding-left: 7px;
     cursor: pointer;
     transition: all 0.2s ease;
-    //左侧菜单模式和左侧菜单混合模式加渐变背景色
-    &.jeecg-layout-mix-sider-logo,&.jeecg-layout-menu-logo{
-      background:@sider-logo-bg-color;
+
+    &.jeecg-layout-mix-sider-logo,
+    &.jeecg-layout-menu-logo {
+      background: transparent;
     }
-    // &.light {
-    //   border-bottom: 1px solid @border-color-base;
-    // }
 
     &.collapsed-show-title {
       padding-left: 20px;
     }
 
     &.light &__title {
-      color: @primary-color;
+      color: #214d58;
     }
 
     &.dark &__title {
@@ -84,24 +78,56 @@
     }
 
     &__title {
-      font-size: 18px;
+      font-size: 20px;
       font-weight: 600;
+      letter-spacing: -0.06em;
       transition: all 0.5s;
       line-height: normal;
     }
 
-    img {
-      height: @logo-width;
-      width: auto;
-      max-width: @logo-max-width;
-      object-fit: contain;
+    .sentiment-brand-mark {
+      position: relative;
+      display: inline-block;
       flex-shrink: 0;
-    }
+      width: 31px;
+      height: 31px;
+      border-radius: 12px 12px 12px 3px;
+      background: linear-gradient(135deg, #1aa2a3, #82d9c2);
+      box-shadow: 0 7px 18px rgba(25, 149, 144, 0.18);
 
-    // 左侧导航栏 Logo 再放大一档
-    &.@{namespace}-layout-menu-logo img {
-      height: @sider-logo-height;
-      max-width: 180px;
+      i {
+        position: absolute;
+        display: block;
+        border: 2px solid #f1fffb;
+        border-radius: 2px;
+      }
+
+      i:nth-child(1) {
+        top: 7px;
+        left: 6px;
+        width: 11px;
+        height: 9px;
+        border-right: 0;
+      }
+
+      i:nth-child(2) {
+        top: 11px;
+        left: 13px;
+        width: 12px;
+        height: 8px;
+        border-left: 0;
+        border-bottom: 0;
+        transform: skewX(-25deg);
+      }
+
+      i:nth-child(3) {
+        right: 4px;
+        bottom: 7px;
+        width: 11px;
+        height: 6px;
+        border-left: 0;
+        border-top: 0;
+      }
     }
   }
 </style>

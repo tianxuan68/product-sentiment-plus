@@ -62,7 +62,8 @@ export function createPermissionGuard(router: Router) {
         
         try {
           if (!isSessionTimeout) {
-            next((to.query?.redirect as string) || '/');
+            // 已登录再进登录页：一律回前台首页（不跟后台 redirect）
+            next(PageEnum.BASE_HOME);
             return;
           }
         } catch {}

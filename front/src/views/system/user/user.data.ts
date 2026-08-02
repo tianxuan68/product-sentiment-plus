@@ -138,50 +138,51 @@ export const searchFormSchema: FormSchema[] = [
     label: '账号',
     field: 'username',
     component: 'JInput',
-    //colProps: { span: 6 },
+    colProps: { span: 6 },
   },
   {
     label: '名字',
     field: 'realname',
     component: 'JInput',
-   //colProps: { span: 6 },
+    colProps: { span: 6 },
   },
   {
     label: '性别',
     field: 'sex',
     component: 'JDictSelectTag',
+    colProps: { span: 6 },
     componentProps: {
       dictCode: 'sex',
       placeholder: '请选择性别',
       stringToNumber: true,
     },
-    //colProps: { span: 6 },
   },
   {
     label: '手机号码',
     field: 'phone',
     component: 'Input',
-    //colProps: { span: 6 },
+    colProps: { span: 6 },
   },
   {
     label: '用户状态',
     field: 'status',
     component: 'JDictSelectTag',
+    colProps: { span: 6 },
     componentProps: {
       dictCode: 'user_status',
       placeholder: '请选择状态',
       stringToNumber: true,
     },
-   //colProps: { span: 6 },
   },
   {
     label: '所属部门',
     field: 'departId',
     component: 'JSelectDept',
+    colProps: { span: 6 },
     componentProps: {
       placeholder: '请选择所属部门',
       showButton: false,
-      checkStrictly: true
+      checkStrictly: true,
     },
   },
 ];

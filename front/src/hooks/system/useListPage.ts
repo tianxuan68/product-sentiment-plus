@@ -239,32 +239,33 @@ export function useListTable(tableProps: TableProps): [
     selectedRowKeys: Ref<any[]>;
   }
 ] {
-  // 自适应列配置
-  const adaptiveColProps: Partial<ColEx> = {
-    xs: 24, // <576px
-    sm: 12, // ≥576px
-    md: 12, // ≥768px
-    lg: 8, // ≥992px
-    xl: 8, // ≥1200px
-    xxl: 6, // ≥1600px
+  // 与「类目管理」列表对齐的统一表格外观
+  const listFormCol: Partial<ColEx> = {
+    xs: 24,
+    sm: 12,
+    md: 6,
+    lg: 6,
+    xl: 6,
+    xxl: 6,
   };
   const defaultTableProps: TableProps = {
     rowKey: 'id',
+    size: 'small',
     // 使用查询条件区域
     useSearchForm: true,
     // 查询条件区域配置
     formConfig: {
       // 紧凑模式
       compact: true,
-      // label默认宽度
-      // labelWidth: 120,
+      // label默认宽度（与类目页一致）
+      labelWidth: 74,
       // 按下回车后自动提交
       autoSubmitOnEnter: true,
       // 默认 row 配置
-      rowProps: { gutter: 8 },
+      rowProps: { gutter: 24 },
       // 默认 col 配置
       baseColProps: {
-        ...adaptiveColProps,
+        ...listFormCol,
       },
       labelCol: {
         xs: 24,
@@ -278,22 +279,21 @@ export function useListTable(tableProps: TableProps): [
       // 是否显示 展开/收起 按钮
       showAdvancedButton: true,
       // 超过指定列数默认折叠
-      autoAdvancedCol: 3,
+      autoAdvancedCol: 4,
       // 操作按钮配置
       actionColOptions: {
-        ...adaptiveColProps,
-        style: { textAlign: 'left' },
+        ...listFormCol,
       },
     },
-    // 斑马纹
-    striped: false,
+    // 斑马纹（与类目页一致）
+    striped: true,
     // 是否可以自适应高度
     canResize: true,
     // 表格最小高度
     // update-begin--author:liaozhiyang---date:20240603---for【TV360X-861】列表查询区域不可往上滚动
     minHeight: 300,
     // update-end--author:liaozhiyang---date:20240603---for【TV360X-861】列表查询区域不可往上滚动
-    // 点击行选中
+    // 点击行不勾选：只能点复选框（与类目页一致，避免整行选中变色）
     clickToRowSelect: false,
     // 是否显示边框
     bordered: true,
@@ -303,7 +303,7 @@ export function useListTable(tableProps: TableProps): [
     showTableSetting: true,
     // 表格全屏设置
     tableSetting: {
-      fullScreen: false,
+      fullScreen: true,
     },
     // 是否显示操作列
     showActionColumn: true,
@@ -356,8 +356,8 @@ export function useListTable(tableProps: TableProps): [
   const defaultRowSelection = reactive({
     ...rowSelection,
     type: rowSelection.type ?? 'checkbox',
-    // 选择列宽度，默认 50
-    columnWidth: rowSelection.columnWidth ?? 50,
+    // 选择列宽度（与类目页一致）
+    columnWidth: rowSelection.columnWidth ?? 30,
     selectedRows: selectedRows,
     selectedRowKeys: selectedRowKeys,
     onChange(...args) {

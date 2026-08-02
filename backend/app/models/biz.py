@@ -72,3 +72,52 @@ class BizSentimentQuery(Base):
     summary: Mapped[Optional[str]] = mapped_column(Text)
     keywords: Mapped[Optional[str]] = mapped_column(String(1000))
     create_time: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+
+class BizCausalResult(Base):
+    """按类目因果分析结果。"""
+
+    __tablename__ = "biz_causal_result"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    category_id: Mapped[Optional[str]] = mapped_column(String(32))
+    category_name: Mapped[str] = mapped_column(String(100))
+    sample_size: Mapped[Optional[int]] = mapped_column(Integer, default=0)
+    treatment_rate: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    outcome_rate: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    ate: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    ate_text: Mapped[Optional[str]] = mapped_column(String(500))
+    treated_positive_rate: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    control_positive_rate: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    table_json: Mapped[Optional[str]] = mapped_column(String(1000))
+    explanation: Mapped[Optional[str]] = mapped_column(String(1000))
+    source: Mapped[Optional[str]] = mapped_column(String(20), default="ai")
+    del_flag: Mapped[Optional[int]] = mapped_column(SmallInteger, default=0)
+    create_by: Mapped[Optional[str]] = mapped_column(String(32))
+    create_time: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    update_by: Mapped[Optional[str]] = mapped_column(String(32))
+    update_time: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+
+class BizKeyword(Base):
+    """方面关键词词典：用于评价标签归并与看板分析。"""
+
+    __tablename__ = "biz_keyword"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    word: Mapped[str] = mapped_column(String(100))
+    aspect: Mapped[Optional[str]] = mapped_column(String(64))
+    # 空 = 通用（跨类目）；有值 = 类目专属
+    category_id: Mapped[Optional[str]] = mapped_column(String(32))
+    category_name: Mapped[Optional[str]] = mapped_column(String(100))
+    polarity: Mapped[Optional[str]] = mapped_column(String(20), default="any")
+    alias: Mapped[Optional[str]] = mapped_column(String(500))
+    weight: Mapped[Optional[int]] = mapped_column(Integer, default=1)
+    status: Mapped[Optional[int]] = mapped_column(SmallInteger, default=1)
+    sort_no: Mapped[Optional[int]] = mapped_column(Integer, default=0)
+    remark: Mapped[Optional[str]] = mapped_column(String(500))
+    del_flag: Mapped[Optional[int]] = mapped_column(SmallInteger, default=0)
+    create_by: Mapped[Optional[str]] = mapped_column(String(32))
+    create_time: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    update_by: Mapped[Optional[str]] = mapped_column(String(32))
+    update_time: Mapped[Optional[datetime]] = mapped_column(DateTime)

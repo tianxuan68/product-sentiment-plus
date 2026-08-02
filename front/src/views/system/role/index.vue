@@ -62,9 +62,6 @@
       api: list,
       columns: columns,
       formConfig: {
-        // 代码逻辑说明: 【QQYUN-5873】查询区域lablel默认居左
-        labelWidth:65,
-        rowProps: { gutter: 24 },
         schemas: searchFormSchema,
       },
       actionColumn: {

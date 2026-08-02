@@ -11,7 +11,7 @@ from app.utils.common import new_id
 from app.services.phone_captcha_service import get_phone_captcha, pop_phone_captcha, validate_phone_captcha
 
 DEFAULT_REGISTER_ROLE_ID = "f6817f48af4fb3af11b9e8bf182f618b"
-DEFAULT_HOME_PATH = "/system/user"
+DEFAULT_HOME_PATH = "/home"
 
 
 _user_roles_cache: TTLCache[str, List[SysRole]] = TTLCache(

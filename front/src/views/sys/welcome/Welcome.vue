@@ -61,7 +61,7 @@
       </div>
     </section>
 
-    <section id="solutions" class="quiet-cta"><div><span class="section-kicker">准备好了吗</span><h2>从今天开始，<br /><em>听见更多可能。</em></h2></div><button class="primary-action" type="button" @click="openInsight('/system/user/insight')">开始探索 <span>→</span></button><div class="quiet-checks"><span>✓ 无需信用卡</span><span>✓ 5 分钟上手</span></div></section>
+    <section id="solutions" class="quiet-cta"><div><span class="section-kicker">准备好了吗</span><h2>从今天开始，<br /><em>听见更多可能。</em></h2></div><button class="primary-action" type="button" @click="openInsight(PageEnum.BASE_INSIGHT)">开始探索 <span>→</span></button><div class="quiet-checks"><span>✓ 无需信用卡</span><span>✓ 5 分钟上手</span></div></section>
 
     <footer id="footer" class="home-footer"><span><i class="brand-mark"><i /><i /><i /></i><b class="brand-word">Sentiment</b></span><p>让每一个真实的声音，都被温柔地看见。</p><small>© 2026 Insight · Made for clarity</small></footer>
   </main>
@@ -70,24 +70,25 @@
 <script lang="ts" setup>
   import { onBeforeUnmount, onMounted, ref } from 'vue';
   import { useRouter } from 'vue-router';
+  import { PageEnum } from '/@/enums/pageEnum';
   import { useUserStore } from '/@/store/modules/user';
 
   const router = useRouter();
   const userStore = useUserStore();
   const mobileOpen = ref(false);
   const insights = [
-    { label: '情绪趋势', icon: '≈', title: '本周品牌好感度正在回升', description: '基于真实反馈，正向情绪较上周持续提升。', route: '/system/user/insight' },
-    { label: '用户声音', icon: '✦', title: '“轻松上手”成为高频关键词', description: '用户在最近的评价中持续提到体验顺滑、反馈及时。', route: '/system/user/insight?tab=work' },
-    { label: '行动建议', icon: '◌', title: '让热爱转化为下一次选择', description: '还有 3 个可验证的优化机会，等待你打开。', route: '/system/user/insight?tab=advice' },
+    { label: '情绪趋势', icon: '≈', title: '本周品牌好感度正在回升', description: '基于真实反馈，正向情绪较上周持续提升。', route: PageEnum.BASE_INSIGHT },
+    { label: '用户声音', icon: '✦', title: '“轻松上手”成为高频关键词', description: '用户在最近的评价中持续提到体验顺滑、反馈及时。', route: `${PageEnum.BASE_INSIGHT}?tab=work` },
+    { label: '行动建议', icon: '◌', title: '让热爱转化为下一次选择', description: '还有 3 个可验证的优化机会，等待你打开。', route: `${PageEnum.BASE_INSIGHT}?tab=advice` },
   ];
 
   function scrollToTop() { mobileOpen.value = false; window.scrollTo({ top: 0, behavior: 'smooth' }); }
   function scrollToSection(id: string) { mobileOpen.value = false; document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); }
   function openInsight(route: string) { router.push(route); }
-  /** 进入 Jeecg 系统管理后台（避开被首页占用的 /system/user） */
+  /** 进入后台：默认打开评价看板 */
   function enterAdmin() {
     mobileOpen.value = false;
-    router.push('/system/role');
+    router.push(PageEnum.BASE_ADMIN);
   }
   async function logout() { await userStore.logout(true); }
   onMounted(() => document.title = 'Sentiment · 产品情绪洞察');

@@ -6,6 +6,7 @@ import logging
 
 from sqlalchemy.exc import OperationalError
 
+from app.api.biz import biz_router
 from app.api.router import sys_router
 from app.api.sentiment import router as sentiment_router
 from app.api.websocket import router as websocket_router
@@ -33,6 +34,7 @@ app.add_middleware(
 )
 
 app.include_router(sys_router, prefix=f"{settings.context_path}/sys")
+app.include_router(biz_router, prefix=f"{settings.context_path}/biz")
 app.include_router(sentiment_router, prefix=settings.context_path)
 app.include_router(websocket_router, prefix=settings.context_path)
 
