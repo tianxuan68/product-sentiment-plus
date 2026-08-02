@@ -1,12 +1,16 @@
 # 模型权重与缓存
 **/checkpoints/*
 !**/checkpoints/.gitkeep
+**/pretrained/
 *.bin
 *.pt
 *.pth
+*.safetensors
 *.onnx
 *.ftz
 *.vec
+*.joblib
+_recovered/
 
 # 大数据（原始源数据如需入库可删掉对应规则）
 *.csv.gz
