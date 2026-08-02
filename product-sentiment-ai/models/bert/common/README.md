@@ -1,136 +1,243 @@
-# BERT 商品评论情感多标签分类
+# BERT 商品评论属性级情感分类（ABSA）
 
-基于 `bert-base-chinese` 的商品评论**多标签（multi-label）情感分类**项目。
-
-**任务定义**：输入一条商品评论文本，输出其包含的多个「方面-情感」标签。例如：
+基于 `bert-base-chinese` 的商品评论**属性级情感分类**（Aspect-Based Sentiment Analysis）项目。
+输入「商品类别 + 评论文本」，输出 8 种属性各自的**情感极性**（好 / 坏 / 未提及）。
 
 ```
-输入文本：客服推荐的尺码合适，发货也很快，下次还会光顾的
-预测标签：尺码合适，发货快
+输入：类别=图书音像   评论=纸张很好，印刷清晰，物流也很快
+输出：质量:好  做工:好  物流:好  价格:未提及  服务:未提及 ...
 ```
 
-一条评论可以同时命中多个标签（如「尺码合适」「发货快」同时存在），
-因此本项目按 **multi-label 多标签分类**建模：BERT 编码后接一个与标签数量等长的分类头，
-每个维度用 `sigmoid` 二分类判定该标签是否命中（`BCEWithLogitsLoss` 训练）。
+- 属性：**质量 / 做工 / 价格 / 物流 / 服务 / 包装 / 描述 / 外观**（8 种）
+- 极性：**好（正面）/ 坏（负面）/ 未提及**
+- 建模：**16 维多标签二分类**（8 属性 × 2 极性），`BCEWithLogitsLoss` 训练
+- 模型：BERT 编码 → [CLS] 向量 → Dropout → Linear(16)
 
 ---
 
-## 1. 目录结构
+## 目录
+
+1. [功能特性](#1-功能特性)
+2. [目录结构](#2-目录结构)
+3. [环境依赖](#3-环境依赖)
+4. [数据说明](#4-数据说明)
+5. [快速开始](#5-快速开始)
+6. [模型方法](#6-模型方法)
+7. [配置说明](#7-配置说明)
+8. [实验结果](#8-实验结果)
+9. [API 服务](#9-api-服务)
+10. [常见问题](#10-常见问题)
+11. [数据流向](#11-数据流向)
+
+---
+
+## 1. 功能特性
+
+- ✅ **属性级情感识别**：定位每个属性是好是坏，而非整句笼统褒贬
+- ✅ **多标签联合建模**：一条评论可同时命中多个属性，不互斥
+- ✅ **类别感知输入**：商品类别作为独立的 BERT 段（segment）输入，利用段编码区分
+- ✅ **自动正负样本加权**：根据训练集统计自动计算 pos_weight，缓解正样本稀疏
+- ✅ **逐属性阈值调优**：训练后在验证集上为每个属性搜索最优判定阈值
+- ✅ **GPU/CPU 自适应**：有 GPU 用 GPU，无 GPU 自动回退 CPU
+- ✅ **完整检查点**：保存完整 state_dict（含微调 BERT）+ 阈值 + 标签元信息，开箱即推理
+- ✅ **API 服务**：内置 FastAPI 接口，供前端/后端调用
+
+---
+
+## 2. 目录结构
 
 ```
 common/
 ├── bert-base-chinese/          # 预训练 BERT 权重（本地，无需联网）
 ├── data/
-│   └── synthetic/              # 合成测试数据（真实标注数据就绪前用于跑通流程）
-├── checkpoints/                # 模型保存目录（最佳模型 / 最终模型）
-├── results/                    # 指标、日志、标签列表
-├── scripts/                    # 项目代码（全部代码都写在这里）
+│   ├── data_pre/               # 原始数据（只读）：数据集最终版.csv、类别ID对照表.csv
+│   ├── processed/              # 拆分后的 train/val/test.csv（由 data_utils.py 生成）
+│   └── synthetic/              # 历史合成测试数据（早期验证用，可忽略）
+├── checkpoints/                # 模型保存目录（best_model.pt / final_model.pt）
+├── results/                    # 指标 JSON、日志、标签列表、测试报告
+│   └── 测试结果报告.md          # 最近的实验结果报告
+├── scripts/                    # 项目代码（全部代码）
 │   ├── config.py               # 全局配置字典（超参数与路径集中管理）
-│   ├── data_utils.py           # 标签词表加载 / 合成数据生成 / 标注数据读取
-│   ├── dataset.py              # 多标签 Dataset 与 multi-hot 标签编码
+│   ├── data_utils.py           # 原始数据读取 / 标签编码 / 分层拆分 / 加载
+│   ├── dataset.py              # PyTorch Dataset 与 collate（类别+评论双段编码）
 │   ├── model.py                # BERT + 分类头多标签模型
-│   ├── train.py                # 训练主程序
-│   └── predict.py              # 推理主程序
+│   ├── train.py                # 训练主程序（含阈值调优与测试评估）
+│   ├── predict.py              # 推理（单条 / 批量文件，可 import 复用）
+│   └── api_server.py           # FastAPI 预测服务
 └── README.md                   # 本文档
 ```
 
-## 2. 环境依赖
+---
 
-使用项目根目录 `requirements.txt` 中已有的虚拟环境即可，关键依赖：
+## 3. 环境依赖
+
+推荐使用项目配置的 conda 环境（示例：`sentiment-plus`），关键依赖：
 
 ```
 torch>=2.0
 transformers>=4.30
 pandas
 scikit-learn
-tqdm
 numpy
+tqdm
+fastapi
+uvicorn
+pydantic
 ```
 
-本项目无需额外安装。运行前确认能导入 torch 与 transformers：
+验证环境：
 
 ```bash
 python -c "import torch, transformers; print(torch.__version__, transformers.__version__)"
 ```
 
-## 3. 数据说明
+> **Windows 中文乱码**：仅控制台显示问题，文件均为 UTF-8。
+> 运行前执行 `chcp 65001`，或在命令前加 `PYTHONIOENCODING=utf-8`。
 
-### 3.1 标签词表
+---
 
-多标签分类的「类别」来自品类标签字典 `data/examples/category_tag_vocab.csv`
-（每行为 `category,aspect,tag,polarity`）。程序会读取其中全部 `tag` 去重作为标签集合。
+## 4. 数据说明
 
-### 3.2 标注数据格式（真实数据）
+### 4.1 原始数据格式（`data/data_pre/数据集最终版.csv`）
 
-训练/验证/测试数据支持两种格式，程序自动识别：
+真实标注数据，每行一条评论，关键列：
 
-- **扁平格式（推荐）**：每行一条评论，`tags` 用 `|` 分隔
+| 列 | 说明 |
+|----|------|
+| `评论内容_clean` | 清洗后的评论文本（模型输入） |
+| `类别` | JSON，如 `[{"类别": "图书音像", "类别ID": 0}]` |
+| `attributes` | JSON，标注的属性极性，如 `[{"aspect": "价格", "polarity": 1}]` |
+| `tokens_jieba` / `text_clean_jieba` | jieba 词级分词（备选列，未使用） |
+| `tokens_char` / `text_clean_char` | 字级分词（保留，便于人工核对） |
 
-  | review_id | sentence | tags |
-  |-----------|----------|------|
-  | r001 | 质量很好，发货快 | 质量好\|发货快 |
+> **为什么不用 jieba 分词列？** BERT-base-Chinese 分词器本身按「字」切分，
+> 再额外 jieba 分词无增益还可能引入错误切分；故模型直接输入清洗文本。
+> 预测新评论时也无需 jieba 依赖。
 
-- **长表格式**（与 `data/examples/review_tags.csv` 一致）：每行一个标签明细，
-  程序按 `review_id` 自动聚合
+### 4.2 标签结构
 
-  | review_id | category | aspect | opinion | polarity | tag |
-  |-----------|----------|--------|---------|----------|-----|
-  | r001 | 女装 | 质量 | 很好 | positive | 质量好 |
+8 属性 × 2 极性 = 16 个标签，`multi-hot` 编码，顺序固定：
 
-真实数据就绪后，把标注好的数据放到 `data/` 下，并修改 `config.py` 中的
-`train_file / val_file / test_file` 路径即可直接训练。
+- 前 8 位 = 各属性「好」：`质量好 做工好 价格好 物流好 服务好 包装好 描述好 外观好`
+- 后 8 位 = 各属性「坏」：`质量坏 做工坏 价格坏 物流坏 服务坏 包装坏 描述坏 外观坏`
 
-### 3.3 合成数据（测试用）
+### 4.3 数据拆分
 
-由于正式训练数据尚未准备好，项目内置了**合成数据生成器**：
-根据标签词表为每个标签预置若干句同义模板句，随机抽取 1~3 个标签拼接成一条评论，
-生成带标注的训练/验证/测试数据，用于跑通全流程。
+数据集只有一份，由程序按「商品类别」**分层抽样**自动拆分
+（保证训练/验证/测试三类别的比例一致），比例 8:1:1。
+
+```bash
+# 一键拆分原始数据 -> data/processed/{train,val,test}.csv
+python scripts/data_utils.py
+```
+
+---
+
+## 5. 快速开始
+
+### 5.1 数据准备（首次）
 
 ```bash
 python scripts/data_utils.py
 ```
 
-默认生成 训练 600 条 / 验证 100 条 / 测试 100 条，输出到 `data/synthetic/`。
-
-## 4. 快速开始
-
-### 4.1 训练
+### 5.2 训练
 
 ```bash
-# 使用默认配置训练（自动选择 GPU，无 GPU 自动回退 CPU）
+# 使用默认配置训练（15 轮，早停 3，自动选择 GPU/CPU）
 python scripts/train.py
 
 # 覆盖部分超参数
-python scripts/train.py --epochs 5 --batch_size 32 --lr 3e-5
-python scripts/train.py --device cpu   # 强制 CPU
+python scripts/train.py --epochs 8 --batch_size 32 --lr 3e-5
+
+# 强制 CPU
+python scripts/train.py --device cpu
+
+# 快速冒烟测试：仅用前 N 条样本验证流程
+python scripts/train.py --subset 2000 --epochs 4
 ```
 
-训练过程中：
+训练完成后自动产出：
 
-- 每轮在验证集上评估，打印 Macro-F1 / Exact-ACC 等指标；
-- 验证集指标最优的模型自动保存到 `checkpoints/best_model.pt`；
-- 全部训练结束后保存最终模型到 `checkpoints/final_model.pt`；
-- 训练日志写入 `results/train_log.csv`，测试集指标写入 `results/test_metrics.json`，
-  标签列表备份到 `results/tags.txt`。
+- `checkpoints/best_model.pt`：验证集最优模型（完整 state_dict + 阈值 + 元信息）
+- `results/test_metrics.json`：测试集指标
+- `results/train_log.csv` / `results/train_run.log`：训练过程
+- `results/labels.txt`：16 个标签名
 
-### 4.2 推理
+### 5.3 推理（单条）
 
 ```bash
-# 单条文本预测（默认加载最佳模型）
-python scripts/predict.py --text "客服推荐的尺码合适，发货也很快"
-
-# 指定模型 / 设备
-python scripts/predict.py --checkpoint checkpoints/final_model.pt --device cpu --text "质量很差，客服也没人管"
-
-# 批量预测：文件每行一条文本，结果输出为 CSV
-python scripts/predict.py --input_file data/synthetic/sample_texts.txt --output_file data/synthetic/predict_result.csv
+python scripts/predict.py --category 图书音像 --text "纸张很好，印刷清晰，物流也很快"
 ```
 
-预测输出为逗号连接命中的标签，例如 `尺码合适，发货快`；
-同时打印各标签概率，便于调整判定阈值（`config.py` 中的 `threshold`，默认 0.65，
-也可通过 `--threshold` 参数临时覆盖）。
+输出格式：
 
-## 5. 配置说明（Config）
+```
+输入类别： 图书音像
+输入评论： 纸张很好，印刷清晰，物流也很快
+预测标签列表： ['做工好', '质量好', '物流好']
+
+各属性明细：
+  质量: 好 (好概率 0.960 / 坏概率 0.003)
+  做工: 好 (好概率 0.941 / 坏概率 0.011)
+  ...
+```
+
+### 5.4 推理（批量文件）
+
+```bash
+# CSV：自动识别「类别」列与「评论」列
+python scripts/predict.py --input_file data/data_pre/xx.csv --output_file results/xx_result.csv
+
+# TXT：每行一条评论，类别统一用 --category（默认「其他」）
+python scripts/predict.py --input_file data/data_pre/sample.txt --output_file results/sample_result.csv
+```
+
+---
+
+## 6. 模型方法
+
+### 6.1 输入编码
+
+评论与商品类别作为两个文本段输入，利用 BERT 段编码区分：
+
+```
+[CLS] 图书音像 [SEP] 纸张很好，印刷清晰... [SEP]
+      段0=类别          段1=评论
+```
+
+### 6.2 模型结构
+
+```
+类别+评论 ──► BERT ──► [CLS]向量(768) ──► Dropout ──► Linear(16) ──► logits
+```
+
+参数量约 102M（BERT 骨干微调 + 16 维分类头）。
+
+### 6.3 损失函数与正负样本平衡
+
+多标签任务中正样本极其稀疏（多数标签正样本仅几十条），若不处理，
+负样本梯度会淹没正样本信号，模型退化为「什么都不预测」。
+因此程序自动计算 `pos_weight = 负样本数 / 正样本数`（裁剪上限 8.0）传给
+`BCEWithLogitsLoss`，放大正样本梯度，是任务能正常收敛的关键。
+
+### 6.4 阈值判定
+
+训练结束后在**验证集**上为每个属性独立搜索「好/坏判定阈值」
+（候选 0.30~0.80，共 36 组组合），使该属性好/坏/未提及三类宏平均 F1 最大。
+阈值随检查点保存，推理时自动加载。
+
+### 6.5 指标口径
+
+| 指标 | 含义 |
+|------|------|
+| 整体属性准确率 | 所有「评论×8属性」单元预测正确的比例（含未提及） |
+| 提及属性准确率 | 仅在**真实被提及**的属性单元上统计（核心指标） |
+| 三类宏平均F1 | 每属性按 好/坏/未提及 三类的宏平均 F1，再对 8 属性平均 |
+
+---
+
+## 7. 配置说明（Config）
 
 所有超参数集中在 `scripts/config.py` 的 `Config` 字典中，常用项：
 
@@ -138,88 +245,127 @@ python scripts/predict.py --input_file data/synthetic/sample_texts.txt --output_
 |----|------|------|
 | `model_name_or_path` | 预训练 BERT 本地目录 | `bert-base-chinese/` |
 | `max_len` | 输入文本最大长度 | 64 |
-| `epochs` | 训练轮数 | 4 |
+| `epochs` | 训练轮数 | 15 |
 | `batch_size` | 批大小 | 16 |
-| `lr` | 学习率 | 5e-5 |
+| `lr` | 学习率 | 3e-5 |
 | `dropout` | 分类头 Dropout | 0.3 |
-| `threshold` | 标签命中概率阈值 | 0.65 |
-| `pos_weight_clamp` | BCE 正样本权重上限 | 8.0 |
 | `weight_decay` | AdamW 权重衰减 | 0.01 |
-| `warmup_ratio` | 学习率预热比例 | 0.1 |
+| `warmup_ratio` | 学习率线性预热比例 | 0.1 |
+| `pos_weight_clamp` | BCE 正样本权重上限 | 8.0 |
+| `early_stop_patience` | 早停轮数（验证指标不提升则提前结束） | 3 |
 | `seed` | 随机种子（可复现） | 42 |
 | `device` | 计算设备（留空自动选择） | 自动 |
+| `split_ratios` | 训练/验证/测试拆分比例 | 8:1:1 |
+| `threshold_grid` | 阈值搜索候选 | 0.3~0.8 |
+| `default_threshold` | 未调优前的兜底阈值 | 0.50 |
+| `api_host` / `api_port` | API 监听地址 / 端口 | 0.0.0.0 / 8010 |
 
-设备选择规则：`cuda` 可用则用 GPU，否则自动回退 `cpu`，无需手动配置。
+设备选择：`cuda` 可用则用 GPU，否则自动回退 `cpu`。
 
-> **关于正负样本平衡（pos_weight）**：多标签任务中，标签数为 28 而一条评论通常只命中
-> 1~3 个标签，正样本非常稀疏。若不处理，负样本梯度会淹没正样本信号，模型会退化成
-> 「什么都不预测」（所有标签概率都被压到 0.5 阈值以下）。因此程序会根据训练集统计每个
-> 标签的正负出现次数，自动计算 `pos_weight = 负样本数 / 正样本数`（裁剪到上限）传给
-> `BCEWithLogitsLoss`，放大正样本梯度，这也是本任务能正常收敛的关键。
+---
 
-## 6. 运行结果（合成数据）
+## 8. 实验结果
 
-> 以下为合成数据上的演示结果（`config.py` 默认参数），
-> 真实数据训练后指标以实际为准。
+### 8.1 快速验证实验（2000 条 · 4 轮 · CPU）
 
-合成数据规模：训练 600 / 验证 100 / 测试 100，每条评论随机包含 1~3 个标签。
+详细见 [`results/测试结果报告.md`](results/测试结果报告.md)，要点如下：
 
-**训练过程（每轮验证集指标，阈值 0.65）：**
+**训练过程（验证集）：**
 
-| 轮次 | 训练损失 | 验证 Macro-F1 | 验证 Exact-ACC |
-|------|---------|--------------|---------------|
-| 1 | 0.8841 | 0.5862 | 0.3000 |
-| 2 | 0.5168 | 0.7688 | 0.4000 |
-| 3 | 0.3602 | 0.8629 | 0.5500 |
-| 4 | 0.2996 | 0.8788 | 0.6500 |
+| 轮次 | 训练损失 | 整体ACC | 提及ACC | 三类宏F1 |
+|------|---------|---------|---------|----------|
+| 1 | 0.5857 | 0.9030 | 0.7333 | 0.5415 |
+| 2 | 0.2890 | 0.9298 | 0.8045 | 0.6908 |
+| 3 | 0.1970 | 0.9420 | 0.8282 | 0.7399 |
+| 4 | 0.1547 | 0.9496 | 0.8282 | **0.7602** |
 
-**测试集最终指标（阈值 0.65，最佳模型）：**
+**测试集最终指标：**
 
 | 指标 | 数值 |
 |------|------|
-| Macro-F1 | 0.8940 |
-| Micro-F1 | 0.9208 |
-| Exact-ACC（完全一致） | 0.7400 |
-| Precision（宏平均） | 0.8925 |
-| Recall（宏平均） | 0.9144 |
-| Hamming-Loss | 0.0114 |
+| 整体属性准确率 | 0.9580 |
+| 提及属性准确率 | **0.7981** |
+| 三类宏平均F1 | **0.7664** |
+| 16标签 Micro F1 | 0.8321 |
+| 16标签 Macro F1 | 0.6617 |
 
-**预测示例（真实推理效果）：**
+### 8.2 对比与结论
 
-```text
-输入文本：客服推荐的尺码合适，发货也很快，下次还会光顾的
-预测标签：发货快，尺码合适
+- 400 条冒烟测试 → 2000 条：三类宏F1 从 **0.44 → 0.77**，提及准确率 **0.48 → 0.80**
+- 指标在第 4 轮仍在上升，尚未收敛，**数据量未饱和**
+- 建议进行全量训练（11557 条 / 15 轮 / 早停），预计三类宏F1 可达 **0.80 以上**
 
-输入文本：质量很差，客服也没人管，用几天就坏了
-预测标签：客服差，容易坏
+---
 
-输入文本：鞋垫的胶凹凸不平，感觉不是正品
-预测标签：疑似非正品，鞋垫不平
+## 9. API 服务
+
+内置 FastAPI 服务，返回格式与后端 JeecgBoot 壳一致：
+
+```json
+{"success": true, "message": "操作成功", "code": 200, "result": {...}}
 ```
 
-## 7. 常见问题
+### 启动服务
 
-- **找不到数据文件？** 先运行 `python scripts/data_utils.py` 生成合成数据；
-  或修改 `config.py` 中的 `train_file / val_file / test_file` 指向真实标注数据。
-- **找不到标签词表？** 确认 `data/examples/category_tag_vocab.csv` 存在，
-  程序还内置了同目录 `04_category_tag_vocab.csv` 作为备用。
-- **加载模型时打印「UNEXPECTED」权重提示？** 正常现象：本地权重是 MLM 预训练格式，
-  本项目只使用其 BERT 编码部分，提示可忽略。
-- **Windows 终端中文乱码？** 仅影响控制台显示，文件均为 UTF-8 编码；
-  可先执行 `chcp 65001` 切换到 UTF-8 代码页。
-- **如何调整判定阈值？** 修改 `config.py` 的 `threshold`，推理时可查看各标签概率辅助判断。
+```bash
+python scripts/api_server.py                 # 默认 0.0.0.0:8010
+python scripts/api_server.py --port 8011     # 覆盖端口
+```
 
-## 8. 数据流向（与本项目的关系）
+> 模型在第一次请求时惰性加载（首次调用慢几秒），后续复用。
+
+### 接口列表
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/health` | 健康检查 |
+| GET | `/api/meta` | 返回支持的 类别 / 属性 / 标签 元信息 |
+| POST | `/api/predict` | 单条预测：`{"category": "图书音像", "text": "…"}` |
+| POST | `/api/predict_file` | 批量预测（上传 CSV/TXT），`?fmt=json` 可返回逐条 JSON |
+
+### 调用示例
+
+```bash
+# 单条预测
+curl -X POST http://localhost:8010/api/predict \
+  -H "Content-Type: application/json" \
+  -d '{"category": "图书音像", "text": "纸张很好，物流快"}'
+
+# 批量预测（返回结果文件下载）
+curl -X POST "http://localhost:8010/api/predict_file?category=%E5%9B%BE%E4%B9%A6%E9%9F%B3%E5%83%8F" \
+  -F "file=@data/data_pre/sample.csv"
+```
+
+---
+
+## 10. 常见问题
+
+- **找不到数据文件？** 确认 `data/data_pre/数据集最终版.csv` 存在，
+  再运行 `python scripts/data_utils.py` 生成拆分文件。
+- **加载模型时提示「MLM 头权重未匹配」？** 正常现象：本地权重是 MLM 预训练格式，
+  本项目只用其 BERT 编码部分，告警可忽略。
+- **训练太慢？** 本机为 CPU。可减小 `epochs`，或用 `--subset` 快速验证流程；
+  有条件建议 GPU。
+- **Windows 终端中文乱码？** 执行 `chcp 65001` 或设 `PYTHONIOENCODING=utf-8`。
+- **预测结果为空？** 该评论所有属性均未过阈值，判定为「未提及」；
+  可查看各属性概率，必要时调低阈值。
+- **为什么每个属性阈值不同？** 不同属性正负样本分布差异大，单一阈值效果差，
+  故在验证集上逐属性搜索最优阈值并随模型保存。
+
+---
+
+## 11. 数据流向
 
 ```text
-data/examples/category_tag_vocab.csv  ──►  标签词表（多标签类别）
-        │
+data/data_pre/数据集最终版.csv（真实标注，只读）
+        │  data_utils.py 按类别分层拆分
         ▼
-(真实) 标注数据 review_tags  ──►  训练/验证/测试
-        │
+data/processed/{train,val,test}.csv（8:1:1）
+        │  train.py 训练（BCE + pos_weight + 早停 + 阈值调优）
         ▼
-scripts/train.py 训练 ──►  checkpoints/best_model.pt
+checkpoints/best_model.pt（完整 state_dict + 阈值 + 元信息）
         │
-        ▼
-scripts/predict.py 推理 ──►  输出评论的多标签情感
+        ├─► predict.py 单条/批量推理
+        │
+        └─► api_server.py（FastAPI）──► 前端 / 后端 / product_tags
 ```

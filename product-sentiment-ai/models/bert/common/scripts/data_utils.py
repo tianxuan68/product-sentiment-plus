@@ -1,24 +1,27 @@
 # -*- coding: utf-8 -*-
 """
-data_utils.py —— 数据处理工具模块
+data_utils.py —— 数据处理工具模块（属性级情感分类）
 
 职责：
-    1. load_tag_vocab()         加载品类标签字典，得到全部标签列表（多标签分类的类别集合）
-    2. generate_synthetic_data() 生成合成多标签数据（训练数据未就绪前用于跑通流程）
-    3. load_labeled_data()       读取标注数据（兼容两种格式，见下）
-    4. build_tag_templates()     合成数据用的「标签 → 模板句子」映射
+    1. ensure_file_exists()        文件存在性检查（带友好中文提示）
+    2. load_raw_data()             读取原始预处理 CSV（解析 类别 / attributes JSON）
+    3. make_label_vector()         把 (属性, 极性) 列表转成 16 维 multi-hot 标签向量
+    4. split_and_save()            把全量数据按类别分层拆分为 训练/验证/测试 并保存
+    5. load_processed_data()       读取拆分后的 CSV，返回训练需要的结构化数据
 
-标注数据支持的两种格式：
-    - 扁平格式（推荐）：每行一条评论，tags 列为逗号分隔的标签
-        review_id,category,sentence,tags
-        r001,女装,质量很好 发货快,质量好|发货快
-    - 长表格式（与 review_tags.csv 一致）：每行一个标签明细，程序自动按 review_id 聚合
-        review_id,product_id,category,aspect,opinion,polarity,tag
+关于分词列的选择（数据格式说明）：
+    原始数据提供 4 种分词列：tokens_jieba / text_clean_jieba / tokens_char / text_clean_char。
+    BERT-base-Chinese 的分词器本身按「字」切分（词表是汉字），
+    再额外用 jieba 分词并不会带来增益，反而可能引入错误切分；且预测新评论时未必有 jieba 依赖。
+    因此模型输入采用「原始清洗文本」评论内容_clean（BERT 分词器会自行按字切分）。
+    同时把 text_clean_char（字级分词、空格分隔）保留到处理后文件，方便人工阅读与排查。
 """
 
+import json
 import random
 import pandas as pd
 from pathlib import Path
+from sklearn.model_selection import train_test_split
 
 
 # ---------------------------------------------------------------------------
@@ -41,273 +44,227 @@ def ensure_file_exists(file_path: str, hint: str = "") -> None:
 
 
 # ---------------------------------------------------------------------------
-# 2. 标签词表加载
+# 2. 原始数据读取与解析
 # ---------------------------------------------------------------------------
-def load_tag_vocab(vocab_file: str, alt_vocab_file: str = "") -> list:
+def load_raw_data(raw_file: str) -> pd.DataFrame:
     """
-    从品类标签字典 CSV 中读取「全部标签」，作为多标签分类的类别集合。
+    读取原始预处理 CSV，并把 JSON 字符串列解析成结构化数据。
 
-    字典文件格式（category_tag_vocab.csv）：
-        category,aspect,tag,polarity
-        女装,面料,面料不错,positive
-        ...
+    原始列说明：
+        评论内容_clean   清洗后的评论文本（模型输入）
+        tokens_jieba    jieba 词级分词（JSON 列表，备选列）
+        text_clean_jieba jieba 分词空格连接（备选列）
+        tokens_char     字级分词（JSON 列表，备选列）
+        text_clean_char 字级分词空格连接（备选列，保留）
+        类别             JSON：[{"类别": "图书音像", "类别ID": 0}]
+        attributes       JSON：[{"aspect": "价格", "polarity": 1}, ...]
 
     参数：
-        vocab_file:     品类标签字典路径。
-        alt_vocab_file: 备用路径（主路径不存在时尝试）。
+        raw_file: 原始 CSV 路径。
 
     返回：
-        去重后排序的标签名列表，例如 ["不发烫", "价格贵", ...]。
+        处理后的 DataFrame，新增两列：
+            category_str  类别名（str）
+            attributes_list   [(属性名, 极性1/0), ...] 列表
     """
-    # 主路径不存在时回退到备用路径
-    candidates = [vocab_file] + ([alt_vocab_file] if alt_vocab_file else [])
-    chosen = None
-    for cand in candidates:
-        if Path(cand).exists():
-            chosen = cand
-            break
+    ensure_file_exists(raw_file, hint="原始数据文件缺失，请确认 data/data_pre/数据集最终版.csv 存在。")
 
-    if chosen is None:
-        # 两个候选都不存在，给出明确提示
-        raise FileNotFoundError(
-            f"[标签词表缺失] 主路径 {vocab_file} 与备用路径 {alt_vocab_file} 均不存在。\n"
-            f"请确认品类标签字典文件已就绪（参考 data/examples/category_tag_vocab.csv）。"
-        )
+    df = pd.read_csv(raw_file, encoding="utf-8-sig")
 
-    # utf-8-sig 可兼容带 BOM 的 Excel 导出文件
-    df = pd.read_csv(chosen, encoding="utf-8-sig")
-
-    # 字典必须包含 tag 列
-    if "tag" not in df.columns:
+    # 必要列校验
+    required = ["评论内容_clean", "类别", "attributes"]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
         raise ValueError(
-            f"[标签词表格式错误] 文件 {chosen} 缺少 tag 列，"
-            f"请检查是否为品类标签字典（含 category,aspect,tag,polarity）。"
+            f"[数据格式错误] 原始数据缺少必要列：{missing}\n"
+            f"实际列：{list(df.columns)}"
         )
 
-    # 去重 + 排序，保证标签顺序稳定（可复现）
-    tags = sorted(set(df["tag"].dropna().astype(str).str.strip()))
-    if not tags:
-        raise ValueError(f"[标签词表为空] 文件 {chosen} 中没有任何有效标签。")
+    # 解析「类别」JSON -> 类别名字符串
+    def parse_category(v):
+        try:
+            lst = json.loads(v)
+            return lst[0]["类别"]
+        except Exception:
+            return ""
 
-    return tags
+    # 解析「attributes」JSON -> [(aspect, polarity), ...]
+    def parse_attributes(v):
+        try:
+            lst = json.loads(v)
+            return [(a["aspect"], int(a["polarity"])) for a in lst]
+        except Exception:
+            return []
+
+    df["category_str"] = df["类别"].apply(parse_category)
+    df["attributes_list"] = df["attributes"].apply(parse_attributes)
+
+    # 去掉没有任何属性标注的行（无法用于监督训练）
+    df = df[df["attributes_list"].map(len) > 0].reset_index(drop=True)
+    return df
 
 
 # ---------------------------------------------------------------------------
-# 3. 合成数据生成
+# 3. 标签向量：8 属性 × 2 极性 -> 16 维 multi-hot
 # ---------------------------------------------------------------------------
-def build_tag_templates() -> dict:
+def make_label_vector(attributes_list: list, aspects: list) -> list:
     """
-    构造「标签 → 多个近义模板句子」的映射，用于生成合成数据。
+    把一条评论的 [(属性, 极性), ...] 转成 16 维 0/1 标签向量。
 
-    说明：
-        每个标签给出若干句不同表达的同义句，生成时随机挑选，
-        让合成数据具备一定多样性，模型需要学会把不同表述映射到同一标签。
+    规则（与 config.build_label_names 一致）：
+        前 8 位 = 各属性「好」（正面），后 8 位 = 各属性「坏」（负面）。
+
+    参数：
+        attributes_list: [(属性名, 极性), ...]，如 [("质量", 1), ("价格", 0)]。
+        aspects:         8 个属性名列表。
 
     返回：
-        {标签名: [句子1, 句子2, ...], ...}
+        长度为 16 的 0/1 列表。例如 "质量好" 则第 0 位为 1。
     """
-    templates = {
-        # ------------------- 女装 -------------------
-        "面料不错": ["面料很好", "料子很不错", "面料质感很棒", "布料摸起来舒服"],
-        "面料差": ["面料很差", "布料太差了", "料子不行，容易起球", "面料摸起来很廉价"],
-        "做工细致": ["做工细致", "做工很精致", "走线缝合得很整齐", "细节处理得很好"],
-        "做工粗糙": ["做工粗糙", "针脚都不齐", "缝线歪歪扭扭", "做工马马虎虎"],
-        "版型好看": ["版型好看", "版型显瘦", "剪裁很正", "穿上很显身材"],
-        "容易卷边": ["会卷边", "衣服下摆容易卷起来", "边缘老是卷着", "洗一次就卷边了"],
-        "尺码合适": ["尺码合适", "大小正好", "尺码刚刚好", "穿着大小很合适"],
-        "建议买大一码": ["建议买大一码", "这款偏小，建议拍大一号", "正常码穿不了，要买大点", "尺码偏小，大一号合适"],
-        "发货快": ["发货也很快", "物流很快", "发货速度一流", "当天就发货了"],
-        "质量好": ["质量很好", "质量杠杠的", "质量没得说", "做工质量都很好"],
-        # ------------------- 鞋靴 -------------------
-        "外观好看": ["外观很好看", "样子非常好看", "颜值很高", "款式时尚好看"],
-        "穿着舒适": ["穿着很舒适", "上脚舒服", "走起来不累脚", "鞋底软，很舒服"],
-        "鞋垫不平": ["鞋垫的胶凹凸不平", "鞋垫不平整", "鞋垫有点硌脚", "鞋垫粘歪了"],
-        "疑似非正品": ["感觉不是正品", "怀疑是假货", "不像正品", "包装像高仿的"],
-        # ------------------- 数码 -------------------
-        "质量好": ["质量很好", "做工扎实", "质量可靠", "用起来很稳"],
-        "续航久": ["续航很久", "电池耐用", "电量很扛用", "充满能用好几天"],
-        "续航差": ["续航太差了", "电池不耐用", "一会儿就没电了", "半天就要充电"],
-        "不发烫": ["不怎么发热", "散热很好", "连续用也不烫手", "温度控制得很好"],
-        "容易发热": ["用一会就发热", "容易发烫", "发热严重", "玩一会儿就很烫"],
-        "性价比高": ["性价比很高", "物美价廉", "这个价位很值", "价格不贵还好用"],
-        "价格贵": ["价格太贵了", "价钱有点高", "比别家贵不少", "性价比不高，偏贵"],
-        "容易坏": ["一个星期就坏了", "用几天就坏了", "质量太差，容易坏", "很快就出故障了"],
-        "客服差": ["客服没人管", "客服态度差", "找客服也没人理", "售后一直联系不上"],
-        # ------------------- 食品 -------------------
-        "味道不错": ["味道很不错", "口感很好", "很好吃", "味道正"],
-        "味道一般": ["味道一般", "口感平平", "味道不咋地", "没什么特别"],
-        "香味纯正": ["香气很纯正", "香味浓郁", "闻着很香", "香味自然不刺鼻"],
-        "香味不对": ["香气跟以前不一样", "香味怪怪的", "香精味太重", "闻起来不对劲"],
-        "疑似假货": ["不知道是不是假的", "怀疑买到假货了", "可能是假货", "跟以前买的不一样，像假的"],
-        "很新鲜": ["很新鲜", "食材很新鲜", "日期很新，很新鲜", "收到的都很新鲜"],
-    }
-    return templates
+    n = len(aspects)
+    vec = [0] * (2 * n)
+    for aspect, polarity in attributes_list:
+        if aspect not in aspects:
+            continue  # 未知属性直接跳过，避免越界
+        idx = aspects.index(aspect) if polarity == 1 else aspects.index(aspect) + n
+        vec[idx] = 1
+    return vec
 
 
-def generate_synthetic_data(
-    vocab_file: str,
-    output_dir: str,
-    sizes: dict,
-    min_tags: int = 1,
-    max_tags: int = 3,
-    seed: int = 42,
-    alt_vocab_file: str = "",
+# ---------------------------------------------------------------------------
+# 4. 拆分并保存 训练/验证/测试 数据
+# ---------------------------------------------------------------------------
+def split_and_save(
+    raw_file: str,
+    processed_dir: str,
+    aspects: list,
+    ratios: dict = None,
+    random_state: int = 42,
 ) -> dict:
     """
-    生成合成多标签数据（训练 / 验证 / 测试），输出到指定目录。
+    把全量数据按「类别」分层拆分为训练/验证/测试集，并保存为 CSV。
 
-    生成规则：
-        1. 加载标签词表得到全部标签；
-        2. 为每条评论随机挑选 1~max_tags 个标签；
-        3. 每个标签从模板池里随机抽一句同义句；
-        4. 将若干句用标点连接成一条完整评论，同时记录其对应标签集合。
+    说明：
+        数据集只有一份（data_pre/数据集最终版.csv），训练/验证/测试需自行拆分。
+        为避免类别分布被破坏（例如「图书音像」占了 61%），
+        采用按类别分层的随机抽样（stratified），保证三个集合的类别比例一致。
 
     参数：
-        vocab_file: 品类标签字典路径。
-        output_dir: 输出目录（会自动创建）。
-        sizes:      各集合样本量，形如 {"train": 600, "val": 100, "test": 100}。
-        min_tags:   每条评论最少标签数。
-        max_tags:   每条评论最多标签数。
-        seed:       随机种子，保证可复现。
-        alt_vocab_file: 备用标签字典路径（主路径不存在时使用）。
+        raw_file:      原始 CSV 路径。
+        processed_dir: 处理后数据输出目录（自动创建）。
+        aspects:       8 个属性名列表。
+        ratios:        拆分比例字典，如 {"train": 0.8, "val": 0.1, "test": 0.1}。
+        random_state:  随机种子，保证可复现。
 
     返回：
         {集合名: 输出 CSV 绝对路径, ...}
     """
-    output = Path(output_dir)
-    output.mkdir(parents=True, exist_ok=True)
+    ratios = ratios or {"train": 0.8, "val": 0.1, "test": 0.1}
+    out_dir = Path(processed_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-    # 加载全部标签，作为随机抽取的候选池
-    tags = load_tag_vocab(vocab_file, alt_vocab_file)
-    templates = build_tag_templates()
+    df = load_raw_data(raw_file)
+    total = len(df)
+    print(f"[数据读取] 原始数据共 {total} 条，类别数 = {df['category_str'].nunique()}")
 
-    # 过滤出有模板的标签（避免生成空评论）
-    valid_tags = [t for t in tags if templates.get(t)]
-    if not valid_tags:
-        raise ValueError("[合成数据生成失败] 标签词表与模板没有交集，无法生成数据。")
+    # 标签向量列（转成 0/1 拼接字符串，便于保存与阅读）
+    label_vecs = df["attributes_list"].apply(lambda lst: make_label_vector(lst, aspects))
+    df["labels"] = label_vecs.apply(lambda v: ",".join(str(x) for x in v))
+    # 命中的属性（去重），便于快速人工核对
+    df["aspects_hit"] = df["attributes_list"].apply(
+        lambda lst: ",".join(dict.fromkeys(a for a, _ in lst))
+    )
 
-    rng = random.Random(seed)
-    # 标点连接符：让生成的句子更有真实评论的感觉
-    connectors = ["，", "，而且", "，同时", "，另外", "。"]
+    # 按「类别」分层：保证训练/验证/测试三者的类别比例一致。
+    # 注意：不能再加「属性数」做组合分层——存在只有 1 条的稀有组合，
+    # 会导致 StratifiedShuffleSplit 报「类内成员不足 2」错误。
+    stratify_key = df["category_str"].astype(str)
 
+    # 先切出测试集，再从剩余部分切出训练/验证
+    train_val, test = train_test_split(
+        df, test_size=ratios["test"], random_state=random_state,
+        stratify=stratify_key, shuffle=True,
+    )
+    val_ratio = ratios["val"] / (ratios["train"] + ratios["val"])
+    train, val = train_test_split(
+        train_val, test_size=val_ratio, random_state=random_state,
+        stratify=train_val["category_str"].astype(str), shuffle=True,
+    )
+
+    # 保存列：类别、评论文本、字级分词（参考）、原始 attributes、标签、命中属性
+    keep_cols = [
+        "category_str", "评论内容_clean", "text_clean_char",
+        "attributes", "attributes_list", "labels", "aspects_hit",
+    ]
     result_paths = {}
-    for split_name, size in sizes.items():
-        rows = []
-        for i in range(size):
-            # 随机抽取本评论要包含的标签（个数在 min~max 之间）
-            n_tags = rng.randint(min(min_tags, len(valid_tags)), min(max_tags, len(valid_tags)))
-            chosen_tags = rng.sample(valid_tags, n_tags)
+    for name, part in [("train", train), ("val", val), ("test", test)]:
+        save_path = out_dir / f"{name}.csv"
+        part[keep_cols].to_csv(save_path, index=False, encoding="utf-8-sig")
+        result_paths[name] = str(save_path)
+        # 打印每个集合的类别与属性分布，方便核对拆分质量
+        print(f"\n[{name}] 共 {len(part)} 条 -> {save_path}")
+        print("  类别分布：", part["category_str"].value_counts().to_dict())
+        print("  属性命中分布：", part["attributes_list"].apply(len).value_counts().to_dict())
 
-            # 每个标签随机抽一句同义句，用连接符拼成完整评论
-            sentences = [rng.choice(templates[t]) for t in chosen_tags]
-            # 打乱顺序，避免模型学到「固定顺序」这种虚假特征
-            rng.shuffle(sentences)
-            text = connectors[rng.randrange(len(connectors))].join(sentences)
-
-            # 标签用 | 分隔存入单列（避免与评论里的中文逗号冲突）
-            rows.append({
-                "review_id": f"{split_name}_{i:04d}",
-                "sentence": text,
-                "tags": "|".join(chosen_tags),
-            })
-
-        df = pd.DataFrame(rows, columns=["review_id", "sentence", "tags"])
-        save_path = output / f"{split_name}_reviews.csv"
-        # index=False 避免写出多余序号列；utf-8-sig 便于 Excel 直接打开
-        df.to_csv(save_path, index=False, encoding="utf-8-sig")
-        result_paths[split_name] = str(save_path)
-        print(f"[合成数据] 已生成 {split_name} 集：{size} 条 -> {save_path}")
-
+    # 打印全局属性×极性分布，供对照
+    pos_neg = {"好": 0, "坏": 0}
+    for lst in df["attributes_list"]:
+        for _, p in lst:
+            pos_neg["好" if p == 1 else "坏"] += 1
+    print(f"\n[全量] 属性极性分布（好/坏）：{pos_neg}")
     return result_paths
 
 
 # ---------------------------------------------------------------------------
-# 4. 标注数据读取（兼容扁平格式与长表格式）
+# 5. 加载拆分后的数据
 # ---------------------------------------------------------------------------
-def load_labeled_data(file_path: str, sep_in_tags: str = "|") -> list:
+def load_processed_data(split_file: str, aspects: list) -> tuple:
     """
-    读取多标签标注数据，统一返回 (文本, 标签列表) 结构。
-
-    支持的格式：
-        - 扁平格式：包含 sentence 与 tags 两列，tags 内用 | 分隔。
-        - 长表格式：包含 review_id 与 tag 两列（可含 aspect/opinion 等明细列），
-          程序按 review_id 自动聚合，并将 sentence 去重。
+    读取拆分后的 CSV，返回训练/评估直接可用的结构化数据。
 
     参数：
-        file_path:    数据文件路径。
-        sep_in_tags:  扁平格式中标签的分隔符，默认 |。
+        split_file: train.csv / val.csv / test.csv 路径。
+        aspects:    8 个属性名列表。
 
     返回：
-        [(句子字符串, [标签1, 标签2, ...]), ...]
+        (categories, texts, label_vectors, attributes_lists)
+        categories:       类别名列表
+        texts:            评论文本列表（评论内容_clean）
+        label_vectors:    16 维 0/1 列表（嵌套列表）
+        attributes_lists: [(属性名, 极性), ...] 列表
     """
-    ensure_file_exists(
-        file_path,
-        hint="训练/验证/测试数据未就绪。可先运行 generate_synthetic_data 生成合成数据，"
-             "或用 python scripts/data_utils.py 直接生成。",
-    )
+    ensure_file_exists(split_file, hint="请先运行 data_utils.py 生成训练/验证/测试拆分文件。")
 
-    df = pd.read_csv(file_path, encoding="utf-8-sig")
+    df = pd.read_csv(split_file, encoding="utf-8-sig")
 
-    # ---- 情况 A：扁平格式（sentence + tags） ----
-    if {"sentence", "tags"}.issubset(df.columns):
-        samples = []
-        for _, row in df.iterrows():
-            text = str(row["sentence"]).strip()
-            # 拆分标签，过滤空标签
-            tag_list = [t.strip() for t in str(row["tags"]).split(sep_in_tags) if str(t).strip()]
-            if text:  # 跳过空评论
-                samples.append((text, tag_list))
-        return samples
+    def parse_attributes(v):
+        # attributes 列保存的是原始 JSON（[{"aspect": "价格", "polarity": 1}]），可直接解析
+        try:
+            lst = json.loads(v)
+            return [(a["aspect"], int(a["polarity"])) for a in lst]
+        except Exception:
+            return []
 
-    # ---- 情况 B：长表格式（review_id + tag，需聚合） ----
-    if {"review_id", "tag"}.issubset(df.columns):
-        # 按 review_id 分组，每个评论聚合出标签集合
-        grouped = df.groupby("review_id")
-        samples = []
-        for review_id, group in grouped:
-            # 评论正文：长表中通常只有一行带 sentence；若没有则用标签拼一个占位
-            sentence_series = group["sentence"] if "sentence" in group.columns else None
-            text = None
-            if sentence_series is not None:
-                texts = sentence_series.dropna().astype(str).str.strip()
-                texts = texts[texts != ""]
-                if len(texts) > 0:
-                    text = texts.iloc[0]
-            # 评论正文缺失时，把该评论的标签拼起来当作正文（便于跑通流程）
-            if not text:
-                text = "，".join(group["tag"].astype(str).tolist())
-            # 该评论对应的标签集合（去重）
-            tag_list = sorted(set(group["tag"].dropna().astype(str).str.strip().tolist()))
-            samples.append((text, tag_list))
-        return samples
-
-    # ---- 两种格式都不满足 ----
-    raise ValueError(
-        f"[数据格式错误] 文件 {file_path} 无法识别为多标签数据。\n"
-        f"需要包含列：sentence,tags（扁平格式）或 review_id,tag（长表格式），"
-        f"实际列为：{list(df.columns)}"
-    )
+    categories = df["category_str"].fillna("").astype(str).tolist()
+    texts = df["评论内容_clean"].fillna("").astype(str).tolist()
+    attributes_lists = df["attributes"].apply(parse_attributes).tolist()
+    label_vectors = [
+        make_label_vector(lst, aspects) for lst in attributes_lists
+    ]
+    return categories, texts, label_vectors, attributes_lists
 
 
 # ---------------------------------------------------------------------------
-# 5. 直接运行入口：一键生成合成数据
+# 6. 直接运行入口：一键拆分数据
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    # 独立运行本脚本时，生成一份合成数据，方便快速准备数据
     from config import Config
 
-    sizes = {
-        "train": Config["synthetic_train_size"],
-        "val": Config["synthetic_val_size"],
-        "test": Config["synthetic_test_size"],
-    }
-    paths = generate_synthetic_data(
-        vocab_file=Config["vocab_file"],
-        alt_vocab_file=Config["vocab_file_alt"],
-        output_dir=Config["synthetic_data_dir"],
-        sizes=sizes,
-        min_tags=Config["synthetic_min_tags"],
-        max_tags=Config["synthetic_max_tags"],
-        seed=Config["seed"],
+    paths = split_and_save(
+        raw_file=Config["raw_data_file"],
+        processed_dir=Config["processed_data_dir"],
+        aspects=Config["aspects"],
+        ratios=Config["split_ratios"],
+        random_state=Config["split_random_state"],
     )
-    print("生成完成：", paths)
+    print("\n拆分完成：", paths)
