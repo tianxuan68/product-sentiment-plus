@@ -1,0 +1,9 @@
+{
+  "include": ["api", "models", "data/scripts", "run_pipeline.py"],
+  "extraPaths": ["."],
+  "venvPath": "E:/study_project/conda_envs",
+  "venv": "product-sentiment-plus",
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "basic",
+  "reportMissingImports": true
+}

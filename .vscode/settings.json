@@ -1,0 +1,9 @@
+{
+  "python.defaultInterpreterPath": "E:/study_project/conda_envs/product-sentiment-plus/python.exe",
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/product-sentiment-ai"
+  ],
+  "python.autoComplete.extraPaths": [
+    "${workspaceFolder}/product-sentiment-ai"
+  ]
+}
