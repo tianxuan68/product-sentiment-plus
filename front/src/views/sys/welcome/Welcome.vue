@@ -18,6 +18,7 @@
       <div class="home-nav-actions">
         <button class="login-link" type="button" @click="logout">退出登录</button>
         <button class="nav-cta" type="button" @click="scrollToSection('solutions')">开始使用 <span>↗</span></button>
+        <button class="nav-cta" type="button" @click="enterAdmin">进入后台 <span>↘</span></button>
       </div>
       <button class="mobile-menu" type="button" aria-label="展开导航" @click="mobileOpen = !mobileOpen">{{ mobileOpen ? '×' : '☰' }}</button>
     </header>
@@ -28,6 +29,7 @@
       <button type="button" @click="scrollToSection('solutions')">解决方案</button>
       <button type="button" @click="scrollToSection('footer')">关于我们</button>
       <button type="button" @click="logout">退出登录</button>
+      <button type="button" @click="enterAdmin">进入后台</button>
     </nav>
 
     <section class="home-hero">
@@ -82,6 +84,11 @@
   function scrollToTop() { mobileOpen.value = false; window.scrollTo({ top: 0, behavior: 'smooth' }); }
   function scrollToSection(id: string) { mobileOpen.value = false; document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); }
   function openInsight(route: string) { router.push(route); }
+  /** 进入 Jeecg 系统管理后台（避开被首页占用的 /system/user） */
+  function enterAdmin() {
+    mobileOpen.value = false;
+    router.push('/system/role');
+  }
   async function logout() { await userStore.logout(true); }
   onMounted(() => document.title = 'Sentiment · 产品情绪洞察');
   onBeforeUnmount(() => { mobileOpen.value = false; });

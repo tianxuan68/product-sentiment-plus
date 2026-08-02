@@ -22,15 +22,17 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from api.services.job_runner import python_cmd, start_job
 from api.services.open_tag_extract import extract_open_tags
 
-_ANNOTATE_DIR = os.path.abspath("./data/scripts/annotate")
+# 以仓库根目录定位，避免「从别的 cwd 直接跑脚本」找不到 tag_rules
+_AI_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+_ANNOTATE_DIR = os.path.join(_AI_ROOT, "data", "scripts", "annotate")
 if _ANNOTATE_DIR not in sys.path:
     sys.path.insert(0, _ANNOTATE_DIR)
 
 from tag_rules import extract_tags, tag_has_text_evidence, tag_meta_map  # noqa: E402
 
-TAG_SKLEARN_CKPT = "./models/tagging/model/tagging_multilabel.joblib"
-TAG_BERT_DIR = "./models/tagging/model/bert_multilabel"
-TAG_HIER_DIR = "./models/tagging/model/bert_hierarchical"
+TAG_SKLEARN_CKPT = os.path.join(_AI_ROOT, "models", "tagging", "model", "tagging_multilabel.joblib")
+TAG_BERT_DIR = os.path.join(_AI_ROOT, "models", "tagging", "model", "bert_multilabel")
+TAG_HIER_DIR = os.path.join(_AI_ROOT, "models", "tagging", "model", "bert_hierarchical")
 
 
 # 1. 启动打标脚本（整表银标 / 开放聚合）
