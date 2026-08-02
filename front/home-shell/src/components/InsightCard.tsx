@@ -1,0 +1,4 @@
+import { motion } from 'framer-motion';
+import { Activity, ArrowUpRight, Sparkles, Waves } from 'lucide-react';
+import type { Insight } from '../services/backendService';
+export function InsightCard({ insight, index }: { insight: Insight; index: number }) { const Icon = insight.icon === 'wave' ? Waves : insight.icon === 'spark' ? Sparkles : Activity; return <motion.article className={`insight-card card-${insight.tone}`} initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: .2 }} transition={{ delay: index * .08 }} whileHover={{ y: -6 }}><div className="card-top"><span className="card-icon"><Icon size={18} /></span><span className="card-label">{insight.label}</span><ArrowUpRight size={17} /></div><h3>{insight.title}</h3><p>{insight.body}</p><div className="card-line" /></motion.article>; }

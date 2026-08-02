@@ -1,0 +1,15 @@
+[    1114ms] [LOG] to.fullPath 1 /system/user @ http://127.0.0.1:3100/src/router/guard/permissionGuard.ts?t=1785654156815:77
+[    1114ms] [LOG] to.path 2 /system/user @ http://127.0.0.1:3100/src/router/guard/permissionGuard.ts?t=1785654156815:78
+[    1209ms] [LOG] ------clear------进入clear方法 @ http://127.0.0.1:3100/src/utils/cache/memory.ts:76
+[    1209ms] [LOG] ------clear------进入clear方法 @ http://127.0.0.1:3100/src/utils/cache/memory.ts:76
+[    1229ms] [LOG]  vue3 app 加载完成！ @ http://127.0.0.1:3100/src/main.ts?t=1785654156815:49
+[    1450ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ http://127.0.0.1:3100/login:0
+[    1450ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:3100/jeecgboot/sys/thirdLogin/config?_t=1785654299975:0
+[    1452ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:3100/jeecgboot/sys/thirdLogin/config?_t=1785654300104:0
+[   13516ms] [LOG]  --- 构建后台路由菜单 ---  @ http://127.0.0.1:3100/src/store/modules/permission.ts?t=1785654156815:150
+[   18787ms] [LOG]  --- 构建后台路由菜单 ---  @ http://127.0.0.1:3100/src/store/modules/permission.ts?t=1785654156815:150
+[   19669ms] [LOG]  vue3 app 加载完成！ @ http://127.0.0.1:3100/src/main.ts?t=1785654156815:49
+[   19911ms] [LOG] storePathTitle /system/user @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654156815:74
+[   19915ms] [LOG] 成功。。。。。 @ http://127.0.0.1:3100/src/layouts/default/header/index.vue?t=1785654156815:110
+[   37706ms] [LOG] storePathTitle /system/user @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654156815:74
+[   43278ms] [LOG] storePathTitle /system/user @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785654156815:74

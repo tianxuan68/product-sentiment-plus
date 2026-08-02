@@ -132,12 +132,14 @@ export function createPermissionGuard(router: Router) {
           return;
         }
         
-        redirectData.query = {
+        if (to.path !== PageEnum.BASE_HOME) {
+          redirectData.query = {
           ...redirectData.query,
           // 代码逻辑说明: 修复登录成功后，没有正确重定向的问题
           redirect: to.fullPath,
 
-        };
+          };
+        }
       }
       next(redirectData);
       return;

@@ -201,9 +201,24 @@ export const useUserStore = defineStore({
 
         // 代码逻辑说明: 修复登录成功后，没有正确重定向的问题
         let redirect = router.currentRoute.value?.query?.redirect as string;
+        // Ignore malformed/default redirects produced by the root route.
+        if (redirect) {
+          try {
+            redirect = decodeURIComponent(redirect);
+          } catch {
+            // Keep the original value and treat it as the default entry.
+          }
+        }
+        const isDefaultLoginRedirect =
+          !redirect ||
+          redirect === PageEnum.BASE_HOME ||
+          redirect.startsWith(`${PageEnum.BASE_HOME}#`) ||
+          redirect.startsWith(`${PageEnum.BASE_HOME}?`) ||
+          redirect.includes('/login?redirect=') ||
+          redirect.includes(PageEnum.BASE_HOME);
         // 判断是否有 redirect 重定向地址
         // 代码逻辑说明: 【QQYUN-5195】登录之后直接刷新页面导致没有进入创建组织页面------------
-        if (redirect && goHome) {
+        if (redirect && !isDefaultLoginRedirect && goHome) {
           // router.options.history.base可替代之前的publicPath
           // 当前页面打开
           window.open(`${router.options.history.base}${redirect}`, '_self');
@@ -212,10 +227,16 @@ export const useUserStore = defineStore({
 
         // 代码逻辑说明: 【issues/1102】设置单点登录后页面，进入首页提示404，也没有绘制侧边栏 #1102---
         let ticket = getUrlParam('ticket');
+        // 根路径默认产生的 /system/user redirect 不应跳过登录后的品牌首屏；
+        // 只有用户明确访问了其他业务深链时，才保留原始 redirect。
+        const roles = userInfo?.roles || [];
+        const isAdmin = userInfo?.username === 'admin' || roles.some((role) => ['admin', 'super'].includes(String(role.value).toLowerCase()));
+        const defaultLandingPath = isAdmin ? PageEnum.BASE_HOME : PageEnum.BASE_HOME;
+        const landingPath = !isDefaultLoginRedirect && redirect ? redirect : defaultLandingPath;
         if(ticket){
-          goHome && (window.location.replace((userInfo && userInfo.homePath) || PageEnum.BASE_HOME));
+          goHome && (window.location.replace(landingPath));
         }else{
-          goHome && (await router.replace((userInfo && userInfo.homePath) || PageEnum.BASE_HOME));
+          goHome && (await router.replace(landingPath));
         }
       }
       return data;
