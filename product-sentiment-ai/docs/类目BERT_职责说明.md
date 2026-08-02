@@ -24,6 +24,6 @@
 
 ## 前端 API
 
-脚本：`models/bert/category/scripts/api.py`  
-启动：`python api.py`（端口 8101，文档 `/docs`）  
+目录：`models/bert/category/api/app.py`  
+启动：`cd api` 后 `python app.py`（端口 8101，文档 `/docs`）  
 接口：`POST /api/category/predict`、`POST /api/category/predict/batch`、`GET /api/category/list`

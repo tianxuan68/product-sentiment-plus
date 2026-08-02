@@ -16,7 +16,7 @@
 | `train.py` | 训练 |
 | `evaluate.py` | 评估 |
 | `predict_fun.py` | 推理 |
-| `api.py` | FastAPI 预测接口（给前端） |
+| `../api/app.py` | FastAPI 预测接口（在 `api/` 目录） |
 
 ## 准备数据
 
@@ -62,11 +62,13 @@ python predict_fun.py --category 服饰服装 --text "这件T恤面料很柔软�
 
 ## 预测 API（前端调用）
 
+接口在 `api/`，训练脚本在 `scripts/`。
+
 ```powershell
-cd models\bert\category\scripts
+cd models\bert\category\api
 # 若缺少 uvicorn：pip install uvicorn
-python api.py
-# 或: uvicorn api:app --host 0.0.0.0 --port 8101
+python app.py
+# 或: uvicorn app:app --host 0.0.0.0 --port 8101
 ```
 
 - 文档：http://127.0.0.1:8101/docs  

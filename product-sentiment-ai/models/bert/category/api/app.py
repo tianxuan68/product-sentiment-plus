@@ -1,7 +1,8 @@
 """类目 BERT 预测 API（FastAPI），供前端调用。
 
-启动（在本 scripts 目录）:
-  uvicorn api:app --host 0.0.0.0 --port 8101 --reload
+启动（在本 api 目录）:
+  python app.py
+  # 或: uvicorn app:app --host 0.0.0.0 --port 8101 --reload
 
 文档:
   http://127.0.0.1:8101/docs
@@ -17,7 +18,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+# 复用 scripts 下的推理逻辑
+SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
+sys.path.insert(0, str(SCRIPTS_DIR))
 
 from config import get_aspect_map, list_trainable_categories, load_config, resolve_path
 from predict_fun import predict_batch, predict_fun
@@ -29,7 +32,6 @@ app = FastAPI(
     description="类目专属多属性情感预测（1/0/null）",
 )
 
-# 前端本地开发跨域
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -134,4 +136,4 @@ def predict_many(body: BatchPredictRequest):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("api:app", host="0.0.0.0", port=8101, reload=True)
+    uvicorn.run("app:app", host="0.0.0.0", port=8101, reload=True)
