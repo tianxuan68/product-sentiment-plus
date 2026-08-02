@@ -22,6 +22,9 @@ def main():
         "./models/bert/common/results/metrics.json",
         "./models/bert/category/results/metrics.json",
         "./models/bert/distill/results/metrics.json",
+        "./models/tagging/results/metrics.json",
+        "./models/tagging/results/metrics_bert.json",
+        "./models/tagging/results/metrics_hierarchical.json",
     ]
 
     rows = []

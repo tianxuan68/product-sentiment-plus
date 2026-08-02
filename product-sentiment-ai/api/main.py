@@ -17,7 +17,7 @@
 from fastapi import FastAPI                                          # Web框架
 from fastapi.middleware.cors import CORSMiddleware                   # 跨域
 
-from api.routers import data, health, jobs, predict, products, tag, train
+from api.routers import data, front, health, jobs, predict, products, tag, train
 
 
 # 1. 创建应用
@@ -27,10 +27,12 @@ app = FastAPI(
         "拼多多式商品动态标签 + 情感分类\n\n"
         "建议调用顺序:\n"
         "1) POST /api/data/prepare\n"
-        "2) POST /api/tag/run\n"
-        "3) POST /api/train/start\n"
-        "4) POST /api/predict/one\n"
-        "5) GET  /api/products/{product_id}/tags"
+        "2) POST /api/tag/run {\"mode\":\"rules\"}  ← 批量标准短标签→商品标签墙\n"
+        "3) POST /api/tag/one                     ← 单条打标（默认 model 标准短标签）\n"
+        "4) POST /api/train/start {\"model\":\"tagging_hier\"}  ← 可选：分层BERT\n"
+        "5) POST /api/predict/one      ← 好评/差评二分类\n"
+        "6) POST /api/front/predict    ← 前端Insight（keywords 走标准短标签）\n"
+        "7) GET  /api/products/{product_id}/tags"
     ),
     version="1.0.0",
 )
@@ -51,6 +53,7 @@ app.include_router(tag.router)
 app.include_router(train.router)
 app.include_router(predict.router)
 app.include_router(products.router)
+app.include_router(front.router)
 
 
 # 4. 首页提示

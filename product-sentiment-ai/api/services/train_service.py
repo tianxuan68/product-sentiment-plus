@@ -28,11 +28,14 @@ def start_train(model, max_samples=None, epochs=None, batch_size=None):
         "bert": "models.bert.common.scripts.train",
         "bert_category": "models.bert.category.scripts.train",
         "distill": "models.bert.distill.scripts.train",
+        "tagging": "models.tagging.scripts.train",
+        "tagging_bert": "models.tagging.scripts.train_bert",
+        "tagging_hier": "models.tagging.scripts.train_hierarchical",
         "compare": "models.common.scripts.compare_results",
     }
     if model == "all":
         raise ValueError(
-            "请分步训练更清晰：baseline → fasttext → bert → bert_category → distill → compare"
+            "请分步训练更清晰：baseline → fasttext → bert → tagging_hier → compare"
         )
     if model not in mapping:
         raise ValueError(

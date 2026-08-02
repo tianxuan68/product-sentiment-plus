@@ -60,5 +60,10 @@ class Settings(BaseSettings):
     spug_sms_api_url: str = ""
     spug_sms_name: str = "推送助手"
 
+    # 评论分析 → product-sentiment-ai
+    sentiment_ai_base_url: str = "http://127.0.0.1:8001"
+    sentiment_ai_mock: bool = False
+    sentiment_ai_timeout: float = 60.0
+
 
 settings = Settings()

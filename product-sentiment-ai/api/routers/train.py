@@ -7,7 +7,7 @@
 from fastapi import APIRouter, HTTPException
 
 from api.schemas import JobResp, OkResp, TrainReq
-from api.services import predict_service, train_service
+from api.services import predict_service, tag_service, train_service
 
 router = APIRouter(prefix="/api/train", tags=["训练"])
 
@@ -37,4 +37,5 @@ def start_train(body: TrainReq):
 @router.post("/reload", response_model=OkResp, summary="训练完成后刷新预测模型缓存")
 def reload_models():
     predict_service.clear_model_cache()
-    return OkResp(ok=True, message="预测模型缓存已清空，下次预测会重新加载")
+    tag_service.clear_tag_model_cache()
+    return OkResp(ok=True, message="预测/打标模型缓存已清空，下次请求会重新加载")

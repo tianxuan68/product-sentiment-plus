@@ -65,7 +65,7 @@ class PredictBatchReq(BaseModel):
 class TrainReq(BaseModel):
     model: str = Field(
         ...,
-        description="baseline | fasttext | bert | bert_category | distill | compare",
+        description="baseline | fasttext | bert | bert_category | distill | tagging | tagging_bert | tagging_hier | compare",
     )
     # 参2: 小样本调试用；正式训练别传
     max_samples: Optional[int] = Field(None, description="小样本调试")
@@ -77,6 +77,60 @@ class TrainReq(BaseModel):
 class TagRunReq(BaseModel):
     min_count: int = 1
     top_k: int = 15
+    # rules=标准短标签词表（默认）；open=开放短语聚合
+    mode: str = Field("rules", description="rules | open")
+
+
+class TagPredictReq(BaseModel):
+    text: str = Field(..., min_length=1, description="评论文本")
+    product_id: str = Field("", description="评论所属商品 ID；草稿可空")
+    category: Optional[str] = Field(None, description="类目（无 product_id 时用）")
+    product_name: Optional[str] = None
+    # model=标准短标签BERT（默认）；rules=规则词表；open=原文短语；hybrid=开放∪模型
+    method: str = Field(
+        "model",
+        description="model | rules | open | hybrid | auto",
+    )
+
+
+class FrontProductDraft(BaseModel):
+    name: str = ""
+    category: str = ""
+    rating: str = ""
+    note: str = ""
+
+
+class FrontPredictReq(BaseModel):
+    content: str = Field(..., min_length=1, description="用户反馈原文")
+    productId: Optional[str] = None
+    product: Optional[FrontProductDraft] = None
+
+
+class FrontPredictResp(BaseModel):
+    sentiment: str  # positive | neutral | negative
+    score: int
+    summary: str
+    keywords: list[str] = []
+
+
+class TagHit(BaseModel):
+    aspect: str
+    tag: str
+    polarity: str
+    score: Optional[float] = None
+    source: Optional[str] = None  # open_clause | hier_general | hier_category | rules
+    scope: Optional[str] = None  # open | general | category
+
+
+class TagPredictResp(BaseModel):
+    text: str
+    product_id: str
+    category: Optional[str] = None
+    product_name: Optional[str] = None
+    tags: list[TagHit]
+    tag_names: list[str] = []
+    method: str = "model"
+    backend: Optional[str] = None  # bert_hierarchical | rules | open_extract | open+model
 
 
 # 5. 商品标签墙

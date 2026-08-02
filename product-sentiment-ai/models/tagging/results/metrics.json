@@ -1,0 +1,16 @@
+{
+  "precision_micro": 0.49605488850771867,
+  "recall_micro": 0.8981366459627329,
+  "f1_micro": 0.6391160220994475,
+  "precision_macro": 0.4463365903278059,
+  "recall_macro": 0.6789478005173613,
+  "f1_macro": 0.5073763563749412,
+  "precision": 0.49605488850771867,
+  "recall": 0.8981366459627329,
+  "f1": 0.6391160220994475,
+  "accuracy": 0.8226016260162602,
+  "model": "tagging_multilabel_char_ngram",
+  "train_size": 84683,
+  "threshold": 0.28,
+  "n_labels": 29
+}
