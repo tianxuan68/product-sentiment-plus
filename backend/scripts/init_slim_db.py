@@ -1,28 +1,21 @@
 """初始化精简版数据库并验证登录链路。
 
-用法（在 jeecg-fastapi 目录）:
-    python scripts/init_slim_db.py
-    python scripts/init_slim_db.py --host 127.0.0.1 --user root --password xxx
+请在 backend 目录下运行:
+    python -m scripts.init_slim_db
+    python -m scripts.init_slim_db --host 127.0.0.1 --user root --password xxx
 """
-from __future__ import annotations
 
+# 导包
 import argparse
-import sys
-from pathlib import Path
 
 import pymysql
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
-
 from app.core.security import encrypt_password, verify_password, verify_token, create_token
 from app.services.dict_service import query_all_dict_items
 from app.services.permission_service import build_menu_tree, query_permissions_by_user
 from app.services.user_service import get_user_roles
-
-SQL_FILE = ROOT / "sql" / "jeecgboot-slim.sql"
 
 
 def load_env_defaults() -> dict:
@@ -46,10 +39,11 @@ def load_env_defaults() -> dict:
     }
 
 
-def run_sql_file(conn: pymysql.Connection, sql_path: Path) -> None:
-    content = sql_path.read_text(encoding="utf-8")
-    statements: list[str] = []
-    buf: list[str] = []
+def run_sql_file(conn, sql_path):
+    with open(sql_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    statements = []
+    buf = []
     for line in content.splitlines():
         stripped = line.strip()
         if not stripped or stripped.startswith("--"):
@@ -127,8 +121,9 @@ def main() -> None:
         connect_timeout=15,
     )
     try:
-        print(f"Applying {SQL_FILE.name} ...")
-        run_sql_file(conn, SQL_FILE)
+        sql_file = "./sql/jeecgboot-slim.sql"
+        print(f"Applying {sql_file} ...")
+        run_sql_file(conn, sql_file)
         print("SQL applied.")
     finally:
         conn.close()

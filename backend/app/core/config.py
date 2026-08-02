@@ -2,12 +2,11 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-
 
 class Settings(BaseSettings):
+    # 请在 backend 目录下启动，这样会读到 ./ .env / .env.local
     model_config = SettingsConfigDict(
-        env_file=str(BASE_DIR / ".env"),
+        env_file=(".env", ".env.local"),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -37,7 +36,7 @@ class Settings(BaseSettings):
     signature_secret: str = "dd05f1c54d63749eda95f9fa6d49v442a"
     context_path: str = "/jeecg-boot"
     cors_origins: str = "http://localhost:3100,http://127.0.0.1:3100"
-    base_dir: Path = BASE_DIR
+    base_dir: Path = Path(".")
     upload_dir: str = "uploads"
     upload_max_mb: int = 10
 

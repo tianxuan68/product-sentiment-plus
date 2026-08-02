@@ -10,29 +10,15 @@
   「评论是否提及物流/包装/客服等服务」对「是否好评」的效应，
   控制节假日与图书品类后估计。
 
-用法：
-  python data2causal.py
+用法（在 product-sentiment-ai 目录下）:
+  python data/scripts/preprocess/data2causal.py
 """
 
-from __future__ import annotations
-
-from pathlib import Path
+# 导包
+import os
 
 import numpy as np
 import pandas as pd
-
-# ==================================================
-# 路径
-# ==================================================
-
-ROOT = Path(__file__).resolve().parents[2]
-SOURCES = ROOT / "sources"
-PROCESSED = ROOT / "processed"
-
-TRAIN_CSV = SOURCES / "训练集.csv"
-PRODUCT_CSV = SOURCES / "商品信息.csv"
-CATEGORY_CSV = SOURCES / "商品类别列表.csv"
-OUTPUT_CSV = PROCESSED / "causal_reviews.csv"
 
 # ==================================================
 # 规则配置
@@ -110,18 +96,18 @@ def _is_holiday(ts: object) -> int:
     return int((dt.month, dt.day) in HOLIDAY_MD)
 
 
-def load_sources() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    print("=" * 50)
-    print("读取源数据")
-    print("=" * 50)
+def load_sources():
+    print("-" * 50)
+    print(f'读取源数据')
+    print("-" * 50)
 
-    train = pd.read_csv(TRAIN_CSV, encoding="utf-8")
-    products = pd.read_csv(PRODUCT_CSV, encoding="utf-8")
-    categories = pd.read_csv(CATEGORY_CSV, encoding="utf-8")
+    train = pd.read_csv("./data/sources/训练集.csv", encoding="utf-8")
+    products = pd.read_csv("./data/sources/商品信息.csv", encoding="utf-8")
+    categories = pd.read_csv("./data/sources/商品类别列表.csv", encoding="utf-8")
 
-    print(f"训练集: {len(train)} 行, 列={list(train.columns)}")
-    print(f"商品信息: {len(products)} 行")
-    print(f"类别列表: {len(categories)} 行")
+    print(f'训练集: {len(train)} 行, 列={list(train.columns)}')
+    print(f'商品信息: {len(products)} 行')
+    print(f'类别列表: {len(categories)} 行')
     return train, products, categories
 
 
@@ -209,19 +195,21 @@ def print_summary(df: pd.DataFrame) -> None:
         print(f"  T=0 好评率: {t0:.4f}")
 
 
-def main() -> None:
+def main():
+    output_csv = "./data/processed/causal_reviews.csv"
+
     train, products, categories = load_sources()
     causal = build_causal_table(train, products, categories)
 
-    PROCESSED.mkdir(parents=True, exist_ok=True)
-    causal.to_csv(OUTPUT_CSV, index=False, encoding="utf-8-sig")
+    os.makedirs("./data/processed", exist_ok=True)
+    causal.to_csv(output_csv, index=False, encoding="utf-8-sig")
 
-    print("=" * 50)
-    print("转换完成")
-    print("=" * 50)
-    print("输出:", OUTPUT_CSV)
-    print("形状:", causal.shape)
-    print("列:", list(causal.columns))
+    print("-" * 50)
+    print(f'转换完成')
+    print("-" * 50)
+    print(f'输出: {output_csv}')
+    print(f'形状: {causal.shape}')
+    print(f'列: {list(causal.columns)}')
     print(causal.head())
     print_summary(causal)
     print(

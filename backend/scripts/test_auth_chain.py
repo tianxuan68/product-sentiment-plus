@@ -1,14 +1,13 @@
-"""端到端验证：注册/改密/登录 密码链路。"""
-from __future__ import annotations
+"""端到端验证：注册/改密/登录 密码链路。
 
-import sys
-from pathlib import Path
+请在 backend 目录下运行:
+    python -m scripts.test_auth_chain
+"""
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
+# 导包
+import base64
 
 from Crypto.Cipher import AES
-import base64
 
 from app.core.security import (
     AES_IV,

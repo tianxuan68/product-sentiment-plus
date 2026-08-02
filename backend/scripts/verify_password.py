@@ -1,4 +1,10 @@
-"""本地验证 JeecgBoot 密码算法是否与数据库哈希一致。用法: python scripts/verify_password.py"""
+"""本地验证 JeecgBoot 密码算法是否与数据库哈希一致。
+
+请在 backend 目录下运行:
+    python -m scripts.verify_password
+"""
+
+# 导包
 from app.core.security import encrypt_password, verify_password
 
 if __name__ == "__main__":

@@ -1,12 +1,11 @@
-"""Diagnose whether a stored hash matches correct or buggy password pipeline."""
-from __future__ import annotations
+"""Diagnose whether a stored hash matches correct or buggy password pipeline.
 
+请在 backend 目录下运行:
+    python -m scripts.diagnose_hash
+"""
+
+# 导包
 import base64
-import sys
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
 from Crypto.Cipher import AES
 
