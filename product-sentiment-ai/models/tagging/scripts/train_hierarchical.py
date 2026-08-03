@@ -417,7 +417,12 @@ def main():
                 "threshold": args.threshold,
                 "thresholds_general": gen_thr_dict,
                 "thresholds_category": cat_thr_dict,
-                "base_model": model_name,
+                # 存相对路径，避免 Windows 绝对路径在 Linux 部署机失效
+                "base_model": (
+                    os.path.relpath(model_name, start=os.getcwd()).replace("\\", "/")
+                    if os.path.isabs(model_name)
+                    else str(model_name).replace("\\", "/")
+                ),
                 "tag_meta": tag_meta_map(),
             }
             with open(os.path.join(ckpt_dir, "hier_config.json"), "w", encoding="utf-8") as f:

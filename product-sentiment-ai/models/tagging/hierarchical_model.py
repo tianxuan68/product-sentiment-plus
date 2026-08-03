@@ -8,9 +8,11 @@
 """
 
 # 导包
+import os
+
 import torch
 import torch.nn as nn
-from transformers import AutoModel
+from transformers import AutoConfig, AutoModel
 
 
 def cat_key(name: str) -> str:
@@ -22,10 +24,29 @@ def cat_key(name: str) -> str:
     )
 
 
+def _load_encoder(model_name: str, *, config_only: bool = False):
+    """加载 BERT 编码器。
+
+    config_only=True：只建结构（权重随后由 load_state_dict 灌入），
+    用于部署机没有本机绝对路径下的 pretrained 目录时。
+    """
+    if config_only:
+        config = AutoConfig.from_pretrained(model_name, local_files_only=True)
+        return AutoModel.from_config(config)
+    return AutoModel.from_pretrained(model_name, local_files_only=True)
+
+
 class HierarchicalTagBERT(nn.Module):
-    def __init__(self, model_name, n_general, category_dims: dict[str, int]):
+    def __init__(
+        self,
+        model_name,
+        n_general,
+        category_dims: dict[str, int],
+        *,
+        config_only: bool = False,
+    ):
         super().__init__()
-        self.encoder = AutoModel.from_pretrained(model_name, local_files_only=True)
+        self.encoder = _load_encoder(model_name, config_only=config_only)
         hidden = self.encoder.config.hidden_size
         self.dropout = nn.Dropout(0.1)
         self.general_head = nn.Linear(hidden, n_general)

@@ -18,6 +18,73 @@ from transformers import AutoTokenizer
 from models.common.dataset.load_hierarchical_tags import format_input
 from models.tagging.hierarchical_model import HierarchicalTagBERT
 
+_AI_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+_DEFAULT_PRETRAINED = os.path.join(
+    _AI_ROOT,
+    "models",
+    "bert",
+    "common",
+    "pretrained",
+    "models",
+    "tiansz--bert-base-chinese",
+    "snapshots",
+    "master",
+)
+
+
+def _is_plain_bert_dir(path: str) -> bool:
+    """是否为可用的 BERT 底座目录（有 config + 底座权重，且不是分层 ckpt）。"""
+    if not path or not os.path.isdir(path):
+        return False
+    if not os.path.isfile(os.path.join(path, "config.json")):
+        return False
+    if os.path.isfile(os.path.join(path, "hier_config.json")):
+        return False
+    return any(
+        os.path.isfile(os.path.join(path, name))
+        for name in ("model.safetensors", "pytorch_model.bin", "model.bin")
+    )
+
+
+def _resolve_encoder_source(base_model: str, ckpt_dir: str) -> tuple[str, bool]:
+    """返回 (path, config_only)。
+
+    训练机写入的 Windows 绝对路径在 Linux 上无效；优先找本仓库相对 pretrained，
+    否则用 ckpt 内 config.json 只建结构（权重由 pytorch_model.bin 灌入）。
+    """
+    if _is_plain_bert_dir(base_model):
+        return os.path.abspath(base_model), False
+
+    # 相对仓库根的路径（推荐写入 hier_config.json）
+    if base_model and not os.path.isabs(base_model):
+        rel_cand = os.path.join(_AI_ROOT, base_model.replace("\\", "/").lstrip("./"))
+        if _is_plain_bert_dir(rel_cand):
+            return os.path.abspath(rel_cand), False
+
+    if _is_plain_bert_dir(_DEFAULT_PRETRAINED):
+        return _DEFAULT_PRETRAINED, False
+
+    # 从泄漏的绝对路径里抠相对后缀
+    norm = (base_model or "").replace("\\", "/")
+    key = "models/bert/common/pretrained/"
+    if key in norm:
+        rel = norm[norm.index(key) :]
+        cand = os.path.join(_AI_ROOT, *rel.split("/"))
+        if _is_plain_bert_dir(cand):
+            return cand, False
+
+    if os.path.isfile(os.path.join(ckpt_dir, "config.json")):
+        print(
+            f"提示: 未找到底座 pretrained，改用 ckpt 配置建编码器结构: {ckpt_dir}"
+        )
+        return os.path.abspath(ckpt_dir), True
+
+    raise FileNotFoundError(
+        "找不到 BERT 底座目录。请上传:\n"
+        f"  {_DEFAULT_PRETRAINED}\n"
+        "或保证 ckpt 目录含 config.json（可 config_only 加载）"
+    )
+
 
 def load_hierarchical_bundle(ckpt_dir="./models/tagging/model/bert_hierarchical"):
     cfg_path = os.path.join(ckpt_dir, "hier_config.json")
@@ -32,10 +99,12 @@ def load_hierarchical_bundle(ckpt_dir="./models/tagging/model/bert_hierarchical"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     tok = AutoTokenizer.from_pretrained(ckpt_dir, local_files_only=True)
     cat_map = cfg["category_tag_map"]
+    encoder_src, config_only = _resolve_encoder_source(cfg.get("base_model") or "", ckpt_dir)
     model = HierarchicalTagBERT(
-        cfg["base_model"],
+        encoder_src,
         n_general=len(cfg["general_labels"]),
         category_dims={c: len(labs) for c, labs in cat_map.items()},
+        config_only=config_only,
     )
     state = torch.load(weight_path, map_location=device)
     model.load_state_dict(state)
