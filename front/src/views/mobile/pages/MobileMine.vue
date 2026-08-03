@@ -27,8 +27,8 @@
 
     <section class="group">
       <h2>系统</h2>
-      <button type="button" @click="router.push(PageEnum.BASE_HOME)">品牌首页</button>
-      <button type="button" @click="router.push('/system/user')">用户管理</button>
+      <button type="button" @click="router.push(PageEnum.BASE_HOME + '?desktop=1')">桌面版前台</button>
+      <button type="button" @click="router.push('/sentiment/dashboard?desktop=1')">评价看板（后台）</button>
       <button type="button" class="danger" @click="logout">退出登录</button>
     </section>
   </div>

@@ -62,8 +62,9 @@ export function createPermissionGuard(router: Router) {
         
         try {
           if (!isSessionTimeout) {
-            // 已登录再进登录页：一律回前台首页（不跟后台 redirect）
-            next(PageEnum.BASE_HOME);
+            // 已登录再进登录页：手机进 /m，桌面进前台首页
+            const { isMobileDevice } = await import('/@/utils/isMobileDevice');
+            next(isMobileDevice() ? PageEnum.MOBILE_SELECT : PageEnum.BASE_HOME);
             return;
           }
         } catch {}
