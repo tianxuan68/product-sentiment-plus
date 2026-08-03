@@ -1,9 +1,13 @@
 <template>
   <main class="insight-page">
     <header class="insight-nav">
-      <button class="insight-brand" type="button" @click="router.push(PageEnum.BASE_HOME)">
+      <button
+        class="insight-brand"
+        type="button"
+        @click="router.push(fromMobile ? PageEnum.MOBILE_SELECT : PageEnum.BASE_HOME)"
+      >
         <span class="brand-mark"><i /><i /><i /></span>
-        <b class="brand-word">Sentiment</b>
+        <b class="brand-word">{{ fromMobile ? '‹ 选品' : 'Sentiment' }}</b>
       </button>
       <div class="mode-switch">
         <button :class="{ active: activeTab === 'chat' }" type="button" @click="activeTab = 'chat'">聊天</button>
@@ -107,8 +111,8 @@
 </template>
 
 <script lang="ts" setup>
-  import { nextTick, ref } from 'vue';
-  import { useRouter } from 'vue-router';
+  import { computed, nextTick, onMounted, ref } from 'vue';
+  import { useRoute, useRouter } from 'vue-router';
   import { predictSentiment, saveProductDraft, type ProductDraft, type SentimentPredictResult } from '/@/api/sentiment';
   import { PageEnum } from '/@/enums/pageEnum';
   import { useUserStore } from '/@/store/modules/user';
@@ -124,7 +128,9 @@
   }
 
   const router = useRouter();
+  const route = useRoute();
   const userStore = useUserStore();
+  const fromMobile = computed(() => String(route.query.from || '') === 'mobile');
   const activeTab = ref<'chat' | 'work'>('chat');
   const language = ref<'zh' | 'en'>('zh');
   const message = ref('');
@@ -275,6 +281,16 @@
   async function logout() {
     await userStore.logout(true);
   }
+
+  onMounted(() => {
+    const name = String(route.query.productName || '').trim();
+    const category = String(route.query.category || '').trim();
+    if (name) product.value.name = name;
+    if (category) product.value.category = category;
+    if (fromMobile.value) {
+      apiMessage.value = name ? `已带入商品「${name}」，可直接输入评价做洞察。` : '从手机选品进入，可直接分析评价。';
+    }
+  });
 </script>
 
 <style lang="less" scoped>

@@ -121,47 +121,107 @@ def _pct(v: Any) -> str:
         return "-"
 
 
+def _pp(v: Any) -> str:
+    """百分点文案，如 12.0 个百分点。"""
+    try:
+        return f"{round(abs(float(v)) * 100, 1)} 个百分点"
+    except (TypeError, ValueError):
+        return "-"
+
+
+def _effect_strength(ate: float) -> str:
+    mag = abs(float(ate))
+    if mag >= 0.15:
+        return "强"
+    if mag >= 0.08:
+        return "中等"
+    if mag >= 0.05:
+        return "偏弱"
+    return "很弱"
+
+
 def _conclusion_from_estimate(est: Dict[str, Any]) -> str:
-    """小白话结论：普通人也能看懂「提服务好不好」。"""
+    """动态因果结论文案：反事实对比 + 类目/效应强弱/样本结构，避免三句模板刷屏。"""
     n = int(est.get("sampleSize") or 0)
+    cat = str(est.get("categoryName") or "该类目").strip() or "该类目"
     if n <= 0:
-        return "还没有可用的评价，请先导入或新增评价，再点「运行分析」。"
+        return f"「{cat}」还没有可用评价。请先导入评价，再点「运行分析」。"
+
     ate = est.get("ate")
     p1 = est.get("treatedPositiveRate")
     p0 = est.get("controlPositiveRate")
+    treat_rate = est.get("treatmentRate")
+    outcome_rate = est.get("outcomeRate")
+    table = est.get("table") or {}
+    n_t1 = int(table.get("t1_y1") or 0) + int(table.get("t1_y0") or 0)
+    n_t0 = int(table.get("t0_y1") or 0) + int(table.get("t0_y0") or 0)
+
     if ate is None or p1 is None or p0 is None:
+        side = "提到服务" if n_t1 == 0 else "没提到服务"
         return (
-            f"一共看了 {n} 条评价，但「提到服务」或「没提到服务」的一边太少，"
-            "暂时不好下结论。建议再多收集一些评价。"
+            f"「{cat}」共 {n} 条评价，但「{side}」一侧样本不足，"
+            f"无法做稳定的反事实对比（需要两边都有评价才能估计服务对好评的净影响）。"
+            f"建议补采该类目评价后再跑分析。"
         )
-    mention_good = _pct(p1)
-    silent_good = _pct(p0)
-    diff = abs(float(ate))
-    diff_txt = f"{round(diff * 100, 1)}%"
-    if float(ate) > 0.05:
-        return (
-            f"说到物流、客服这些服务时，好评更多"
-            f"（提到服务好评约 {mention_good}，没提到约 {silent_good}，大约高 {diff_txt}）。"
-            f"说明把服务做好，顾客更容易满意。"
-        )
-    if float(ate) < -0.05:
-        return (
-            f"说到物流、客服这些服务时，好评反而更少"
-            f"（提到服务好评约 {mention_good}，没提到约 {silent_good}，大约低 {diff_txt}）。"
-            f"说明服务问题可能在拉低满意度，建议优先改进服务。"
-        )
-    return (
-        f"提到服务和没提到服务的好评差不多"
-        f"（分别约 {mention_good} 和 {silent_good}），"
-        f"看不出服务体验对满意度有明显影响。"
+
+    ate_f = float(ate)
+    strength = _effect_strength(ate_f)
+    treat_txt = _pct(treat_rate) if treat_rate is not None else "-"
+    overall_txt = _pct(outcome_rate) if outcome_rate is not None else "-"
+    cover = (
+        f"在 {n} 条评价中，约 {treat_txt}（{n_t1} 条）主动提到物流/客服/售后等服务，"
+        f"其余 {n_t0} 条未提；类目整体好评约 {overall_txt}。"
     )
+
+    # 反事实核心：提到服务(处理组) vs 未提(对照组) 的好评差 = 估计的服务效应
+    contrast = (
+        f"反事实对比：若把「提到服务」看作处理、把「未提服务」看作对照，"
+        f"两组好评率分别为 {_pct(p1)} 与 {_pct(p0)}，"
+        f"估计效应约 {ate_f:+.1%}（{strength}）。"
+    )
+
+    if ate_f > 0.05:
+        action = (
+            f"解读：在「{cat}」里，顾客一旦谈到服务，满意度往往更高——"
+            f"服务体验很可能是在「抬升」口碑（相对未提服务的评价高出 {_pp(ate_f)}）。"
+            f"建议把物流时效、客服响应做成该类目的显性卖点，并在详情页强化承诺。"
+        )
+    elif ate_f < -0.05:
+        action = (
+            f"解读：在「{cat}」里，谈到服务的评价好评率反而更低——"
+            f"服务问题更像在「拖累」满意度（相对未提服务低 {_pp(ate_f)}）。"
+            f"优先复盘差评里的物流延误、包装破损、客服推诿，属于因果信号较强的改进抓手。"
+        )
+    else:
+        action = (
+            f"解读：在「{cat}」里，提到服务与否的好评差距只有 {_pp(ate_f)}（{strength}），"
+            f"说明当前数据下「服务」不是拉开满意度的主因；"
+            f"口碑差异更可能来自商品本身（品质/尺码/性价比等），服务可维持现状、把精力放在产品侧。"
+        )
+
+    # 样本结构提示：处理组过稀/过密时降低因果可信度表述
+    caveats = []
+    if n < 80:
+        caveats.append("样本量偏少，效应估计波动可能较大")
+    if treat_rate is not None:
+        tr = float(treat_rate)
+        if tr < 0.08:
+            caveats.append("很少人提到服务，处理组偏稀，结论宜谨慎")
+        elif tr > 0.85:
+            caveats.append("绝大多数评价都提到服务，对照组偏稀，对比稳定性一般")
+    if min(n_t1, n_t0) < 15:
+        caveats.append("某一侧少于 15 条，显著性有限")
+    caveat_txt = (" 注意：" + "；".join(caveats) + "。") if caveats else ""
+
+    return cover + contrast + action + caveat_txt
 
 
 def _explanation_plain() -> str:
     return (
-        "怎么看：把评价分成两类——"
-        "一类提到了物流/客服/售后等服务，一类没提。"
-        "再比较两边好评谁更多。数字越大，说明服务对满意度的影响越明显。"
+        "因果读法（不是简单好评率）："
+        "把「是否提到物流/客服/售后」当作处理变量，把「是否好评」当作结果；"
+        "比较处理组与对照组的好评差，得到服务对满意度的估计效应。"
+        "正效应≈服务在加分，负效应≈服务在拖后腿，接近 0≈服务不是主因。"
     )
 
 

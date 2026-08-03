@@ -5,6 +5,12 @@ export enum PageEnum {
   BASE_HOME = '/home',
   // 前台洞察工作台
   BASE_INSIGHT = '/home/insight',
+  // 手机端：评论查找 + 洞察/看板/我的
+  MOBILE_HOME = '/m',
+  MOBILE_SELECT = '/m/select',
+  MOBILE_INSIGHT = '/m/insight',
+  MOBILE_BOARD = '/m/board',
+  MOBILE_MINE = '/m/mine',
   // 后台默认落地：评价看板
   BASE_ADMIN = '/sentiment/dashboard',
   // post-login brand welcome path

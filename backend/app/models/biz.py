@@ -67,6 +67,8 @@ class BizSentimentQuery(Base):
     category_id: Mapped[Optional[str]] = mapped_column(String(32))
     category_name: Mapped[Optional[str]] = mapped_column(String(100))
     content: Mapped[str] = mapped_column(Text)
+    # 评价配图（手机端列表主图）；为空时可回退商品封面
+    cover_url: Mapped[Optional[str]] = mapped_column(String(500))
     sentiment: Mapped[Optional[str]] = mapped_column(String(20))
     score: Mapped[Optional[int]] = mapped_column(Integer)
     summary: Mapped[Optional[str]] = mapped_column(Text)

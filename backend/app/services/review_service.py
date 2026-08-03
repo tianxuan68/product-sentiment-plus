@@ -45,7 +45,7 @@ def _normalize_keywords(raw: Optional[Union[List[str], str]]) -> List[str]:
     return [p for p in parts if p]
 
 
-def review_to_dict(row: BizSentimentQuery) -> Dict[str, Any]:
+def review_to_dict(row: BizSentimentQuery, *, product_cover: Optional[str] = None) -> Dict[str, Any]:
     data = model_to_dict(row)
     data["sentiment_dictText"] = _SENTIMENT_TEXT.get(str(row.sentiment or "").lower(), row.sentiment or "")
     keywords = row.keywords
@@ -54,13 +54,40 @@ def review_to_dict(row: BizSentimentQuery) -> Dict[str, Any]:
             parsed = json.loads(keywords)
             if isinstance(parsed, list):
                 data["keywordsText"] = "、".join(str(x) for x in parsed)
+                data["keywordList"] = [str(x).strip() for x in parsed if str(x).strip()]
             else:
                 data["keywordsText"] = keywords
+                data["keywordList"] = _normalize_keywords(keywords)
         except Exception:
             data["keywordsText"] = keywords
+            data["keywordList"] = _normalize_keywords(keywords)
     else:
         data["keywordsText"] = ""
+        data["keywordList"] = []
+    # 评价图优先，其次商品封面（手机端列表主图）
+    cover = (data.get("coverUrl") or "").strip() or (product_cover or "").strip() or None
+    data["coverUrl"] = cover
+    data["hasOwnCover"] = bool((getattr(row, "cover_url", None) or "").strip())
     return data
+
+
+def _product_cover_map(db: Session, product_ids: List[str]) -> Dict[str, str]:
+    ids = [i for i in product_ids if i]
+    if not ids:
+        return {}
+    rows = (
+        db.query(BizProduct.id, BizProduct.cover_url)
+        .filter(BizProduct.id.in_(ids), BizProduct.del_flag == 0)
+        .all()
+    )
+    return {str(r.id): str(r.cover_url) for r in rows if r.cover_url}
+
+
+_SORT_COLUMNS = {
+    "createTime": BizSentimentQuery.create_time,
+    "score": BizSentimentQuery.score,
+    "sentiment": BizSentimentQuery.sentiment,
+}
 
 
 def list_reviews(
@@ -69,22 +96,77 @@ def list_reviews(
     page_no: int = 1,
     page_size: int = 10,
     content: Optional[str] = None,
+    keyword: Optional[str] = None,
     product_name: Optional[str] = None,
     username: Optional[str] = None,
     sentiment: Optional[str] = None,
+    category_id: Optional[str] = None,
+    tag: Optional[str] = None,
+    score_min: Optional[int] = None,
+    score_max: Optional[int] = None,
+    has_image: Optional[bool] = None,
+    column: Optional[str] = None,
+    order: Optional[str] = None,
 ) -> Dict[str, Any]:
     q = db.query(BizSentimentQuery)
-    if content and content.strip():
-        q = q.filter(BizSentimentQuery.content.contains(content.strip()))
+    text = (keyword or content or "").strip()
+    if text:
+        q = q.filter(
+            BizSentimentQuery.content.contains(text)
+            | BizSentimentQuery.product_name.contains(text)
+            | BizSentimentQuery.keywords.contains(text)
+            | BizSentimentQuery.summary.contains(text)
+        )
     if product_name and product_name.strip():
         q = q.filter(BizSentimentQuery.product_name.contains(product_name.strip()))
     if username and username.strip():
         q = q.filter(BizSentimentQuery.username.contains(username.strip()))
     if sentiment and sentiment.strip():
-        q = q.filter(BizSentimentQuery.sentiment == sentiment.strip())
-    q = q.order_by(BizSentimentQuery.create_time.desc())
+        q = q.filter(BizSentimentQuery.sentiment == sentiment.strip().lower())
+    if category_id and category_id.strip():
+        q = q.filter(BizSentimentQuery.category_id == category_id.strip())
+    if tag and tag.strip():
+        q = q.filter(
+            BizSentimentQuery.keywords.contains(tag.strip())
+            | BizSentimentQuery.content.contains(tag.strip())
+        )
+    if score_min is not None:
+        q = q.filter(BizSentimentQuery.score >= int(score_min))
+    if score_max is not None:
+        q = q.filter(BizSentimentQuery.score <= int(score_max))
+    if has_image is True:
+        from sqlalchemy import and_, or_
+
+        prod_ids = [
+            r[0]
+            for r in db.query(BizProduct.id)
+            .filter(
+                BizProduct.del_flag == 0,
+                BizProduct.cover_url.isnot(None),
+                BizProduct.cover_url != "",
+            )
+            .all()
+        ]
+        own = and_(BizSentimentQuery.cover_url.isnot(None), BizSentimentQuery.cover_url != "")
+        if prod_ids:
+            q = q.filter(or_(own, BizSentimentQuery.product_id.in_(prod_ids)))
+        else:
+            q = q.filter(own)
+    elif has_image is False:
+        q = q.filter((BizSentimentQuery.cover_url.is_(None)) | (BizSentimentQuery.cover_url == ""))
+
+    col = _SORT_COLUMNS.get((column or "").strip() or "createTime", BizSentimentQuery.create_time)
+    if str(order or "desc").lower() == "asc":
+        q = q.order_by(col.asc(), BizSentimentQuery.create_time.desc())
+    else:
+        q = q.order_by(col.desc(), BizSentimentQuery.create_time.desc())
+
     items, total = paginate_query(q, page_no, page_size)
-    records = [review_to_dict(i) for i in items]
+    covers = _product_cover_map(db, [i.product_id for i in items if i.product_id])
+    records = [
+        review_to_dict(i, product_cover=covers.get(str(i.product_id or "")))
+        for i in items
+    ]
     return PageResult.build(records, total, page_no, page_size).model_dump()
 
 
@@ -131,6 +213,7 @@ def create_review(
     if sentiment and sentiment not in _SENTIMENT_TEXT:
         raise ValueError("情绪取值应为 positive / neutral / negative")
     score = data.get("score")
+    cover_url = str(data.get("coverUrl") or data.get("cover_url") or "").strip() or None
     row = BizSentimentQuery(
         id=new_id(),
         user_id=user_id,
@@ -140,6 +223,7 @@ def create_review(
         category_id=resolved["category_id"],
         category_name=resolved["category_name"],
         content=content,
+        cover_url=cover_url,
         sentiment=sentiment,
         score=int(score) if score is not None and str(score) != "" else None,
         summary=(str(data.get("summary") or "").strip() or None),
@@ -182,6 +266,9 @@ def update_review(db: Session, rid: str, data: Dict[str, Any]) -> BizSentimentQu
         row.keywords = json.dumps(keywords, ensure_ascii=False) if keywords else None
     if "username" in data:
         row.username = (str(data.get("username") or "").strip() or None)
+    if "coverUrl" in data or "cover_url" in data:
+        cover = data.get("coverUrl") if "coverUrl" in data else data.get("cover_url")
+        row.cover_url = (str(cover or "").strip() or None)
     db.commit()
     db.refresh(row)
     return row

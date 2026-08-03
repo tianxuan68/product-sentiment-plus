@@ -27,7 +27,7 @@
       { field: 'sampleSize', label: '评价条数' },
       { field: 'treatmentRateText', label: '提到服务占比' },
       { field: 'outcomeRateText', label: '好评占比' },
-      { field: 'conclusion', label: '结论（白话）' },
+      { field: 'conclusion', label: '因果解读' },
       { field: 'updateTime', label: '更新时间' },
     ],
   });

@@ -653,6 +653,7 @@ CREATE TABLE `biz_sentiment_query` (
   `category_id` varchar(32) DEFAULT NULL,
   `category_name` varchar(100) DEFAULT NULL,
   `content` text NOT NULL,
+  `cover_url` varchar(500) DEFAULT NULL COMMENT '评价配图',
   `sentiment` varchar(20) DEFAULT NULL,
   `score` int DEFAULT NULL,
   `summary` text,

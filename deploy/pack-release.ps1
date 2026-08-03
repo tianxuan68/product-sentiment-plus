@@ -11,7 +11,8 @@
 #   requirements.txt（顺带复制）
 
 param(
-    [switch]$SkipFrontBuild
+    [switch]$SkipFrontBuild,
+    [switch]$SkipAi
 )
 
 $ErrorActionPreference = "Stop"
@@ -78,27 +79,35 @@ $BackendZip = Join-Path $Out "backend.zip"
 Compress-Archive -Path (Join-Path $BackendStage "*") -DestinationPath $BackendZip -Force
 Write-Host "OK  backend.zip"
 
-# ---------- 3) AI ai.zip（代码 + 推理权重）----------
-$AiSrc = Join-Path $Root "product-sentiment-ai"
-Assert-Exists (Join-Path $AiSrc "models\tagging\model\bert_hierarchical\hier_config.json") `
-    "缺少打标模型权重，无法打包 AI"
-Assert-Exists (Join-Path $AiSrc "models\bert\common\model\bert_all\config.json") `
-    "缺少情感模型权重，无法打包 AI"
+# ---------- 3) AI ai.zip（代码 + 推理权重；日常前后端更新可 -SkipAi）----------
+if ($SkipAi) {
+    Write-Host "SKIP ai.zip (-SkipAi)"
+} else {
+    $AiSrc = Join-Path $Root "product-sentiment-ai"
+    Assert-Exists (Join-Path $AiSrc "models\tagging\model\bert_hierarchical\hier_config.json") `
+        "缺少打标模型权重，无法打包 AI"
+    Assert-Exists (Join-Path $AiSrc "models\bert\common\model\bert_all\config.json") `
+        "缺少情感模型权重，无法打包 AI"
 
-$AiStage = Join-Path $Stage "ai"
-New-Item -ItemType Directory -Path $AiStage | Out-Null
-robocopy $AiSrc $AiStage /E `
-    /XD __pycache__ .venv .git `
-    /XF *.pyc `
-    /NFL /NDL /NJH /NJS /nc /ns /np | Out-Null
+    $AiStage = Join-Path $Stage "ai"
+    New-Item -ItemType Directory -Path $AiStage | Out-Null
+    robocopy $AiSrc $AiStage /E `
+        /XD __pycache__ .venv .git `
+        /XF *.pyc `
+        /NFL /NDL /NJH /NJS /nc /ns /np | Out-Null
 
-$AiZip = Join-Path $Out "ai.zip"
-Compress-Archive -Path (Join-Path $AiStage "*") -DestinationPath $AiZip -Force
-Write-Host "OK  ai.zip"
+    $AiZip = Join-Path $Out "ai.zip"
+    Compress-Archive -Path (Join-Path $AiStage "*") -DestinationPath $AiZip -Force
+    Write-Host "OK  ai.zip"
+}
 
-# ---------- 附带：SQL + 依赖清单 ----------
+# ---------- 附带：SQL + 依赖清单（仅全量打包时带上大 SQL）----------
 Copy-Item (Join-Path $Root "requirements.txt") $Out -Force
-Copy-Item (Join-Path $Root "backend\sql\jeecgboot-slim.sql") $Out -Force
+if (-not $SkipAi) {
+    Copy-Item (Join-Path $Root "backend\sql\jeecgboot-slim.sql") $Out -Force
+} else {
+    Write-Host "SKIP jeecgboot-slim.sql (-SkipAi 日常增量不带大 SQL)"
+}
 
 # 清理临时目录
 Remove-Item $Stage -Recurse -Force

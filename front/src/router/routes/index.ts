@@ -64,6 +64,41 @@ export const InsightRoute: AppRouteRecordRaw = {
   meta: { title: '情绪洞察', ignoreAuth: false, hideMenu: true, hideBreadcrumb: true },
 };
 
+/** 手机端：评论查找 + 看板/洞察/我的 */
+export const MobileRoute: AppRouteRecordRaw = {
+  path: PageEnum.MOBILE_HOME,
+  name: 'MobileShell',
+  component: () => import('/@/views/mobile/MobileShell.vue'),
+  redirect: PageEnum.MOBILE_SELECT,
+  meta: { title: '评论', ignoreAuth: false, hideMenu: true, hideBreadcrumb: true },
+  children: [
+    {
+      path: 'select',
+      name: 'MobileSelect',
+      component: () => import('/@/views/mobile/pages/MobileSelect.vue'),
+      meta: { title: '评论', ignoreAuth: false, hideMenu: true },
+    },
+    {
+      path: 'insight',
+      name: 'MobileInsight',
+      component: () => import('/@/views/mobile/pages/MobileInsight.vue'),
+      meta: { title: '洞察', ignoreAuth: false, hideMenu: true },
+    },
+    {
+      path: 'board',
+      name: 'MobileBoard',
+      component: () => import('/@/views/mobile/pages/MobileBoard.vue'),
+      meta: { title: '看板', ignoreAuth: false, hideMenu: true },
+    },
+    {
+      path: 'mine',
+      name: 'MobileMine',
+      component: () => import('/@/views/mobile/pages/MobileMine.vue'),
+      meta: { title: '我的', ignoreAuth: false, hideMenu: true },
+    },
+  ],
+};
+
 /** 旧前台路径兼容：洞察页曾挂在 /system/user/insight */
 export const LegacyInsightRedirectRoute: AppRouteRecordRaw = {
   path: '/system/user/insight',
@@ -102,6 +137,7 @@ export const basicRoutes = [
   WelcomeRoute,
   UserHomeRoute,
   InsightRoute,
+  MobileRoute,
   LegacyInsightRedirectRoute,
   RootRoute,
   ...mainOutRoutes,

@@ -10,6 +10,7 @@ class ReviewBody(BaseModel):
     productName: Optional[str] = None
     categoryId: Optional[str] = None
     categoryName: Optional[str] = None
+    coverUrl: Optional[str] = None
     sentiment: Optional[str] = None
     score: Optional[int] = Field(default=None, ge=0, le=100)
     summary: Optional[str] = None

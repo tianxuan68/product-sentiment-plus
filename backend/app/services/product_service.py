@@ -4,9 +4,10 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy import asc, case, desc, func, or_
 from sqlalchemy.orm import Session
 
-from app.models.biz import BizCategory, BizProduct
+from app.models.biz import BizCategory, BizProduct, BizSentimentQuery
 from app.utils.common import model_to_dict, new_id, paginate_query
 
 
@@ -26,13 +27,78 @@ def _category_name_map(db: Session, category_ids: List[str]) -> Dict[str, str]:
     return {r.id: r.name for r in rows}
 
 
-def product_to_dict(db: Session, row: BizProduct, cat_map: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+def _review_stats_map(db: Session, product_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+    """批量统计商品评价条数 / 好评率，供手机选品卡片展示。"""
+    ids = [i for i in set(product_ids) if i]
+    if not ids:
+        return {}
+    pos_expr = case(
+        (func.lower(func.coalesce(BizSentimentQuery.sentiment, "")) == "positive", 1),
+        else_=0,
+    )
+    rows = (
+        db.query(
+            BizSentimentQuery.product_id,
+            func.count(BizSentimentQuery.id),
+            func.sum(pos_expr),
+        )
+        .filter(BizSentimentQuery.product_id.in_(ids))
+        .group_by(BizSentimentQuery.product_id)
+        .all()
+    )
+    out: Dict[str, Dict[str, Any]] = {}
+    for pid, total, pos in rows:
+        t = int(total or 0)
+        p = int(pos or 0)
+        out[str(pid)] = {
+            "reviewCount": t,
+            "positiveRate": round(p / t, 4) if t else 0.0,
+        }
+    return out
+
+
+def product_to_dict(
+    db: Session,
+    row: BizProduct,
+    cat_map: Optional[Dict[str, str]] = None,
+    stats: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     data = model_to_dict(row)
     if cat_map is None and row.category_id:
         cat_map = _category_name_map(db, [row.category_id])
     data["categoryName"] = (cat_map or {}).get(row.category_id or "", "")
     data["status_dictText"] = "上架" if row.status == 1 else "下架"
+    if stats:
+        data["reviewCount"] = int(stats.get("reviewCount") or 0)
+        data["positiveRate"] = float(stats.get("positiveRate") or 0)
+    else:
+        data.setdefault("reviewCount", 0)
+        data.setdefault("positiveRate", 0.0)
     return data
+
+
+def list_brands(
+    db: Session,
+    *,
+    category_id: Optional[str] = None,
+    status: Optional[int] = 1,
+    limit: int = 80,
+) -> List[str]:
+    q = (
+        db.query(BizProduct.brand)
+        .filter(
+            BizProduct.del_flag == 0,
+            BizProduct.brand.isnot(None),
+            BizProduct.brand != "",
+        )
+        .distinct()
+    )
+    if category_id:
+        q = q.filter(BizProduct.category_id == category_id)
+    if status is not None and str(status) != "":
+        q = q.filter(BizProduct.status == int(status))
+    rows = q.order_by(BizProduct.brand.asc()).limit(max(1, min(int(limit or 80), 200))).all()
+    return [str(r[0]).strip() for r in rows if r and r[0] and str(r[0]).strip()]
 
 
 def list_products(
@@ -45,9 +111,24 @@ def list_products(
     sku: Optional[str] = None,
     category_id: Optional[str] = None,
     status: Optional[int] = None,
+    keyword: Optional[str] = None,
+    column: Optional[str] = None,
+    order: Optional[str] = None,
+    with_stats: bool = False,
 ) -> Dict[str, Any]:
     q = db.query(BizProduct).filter(BizProduct.del_flag == 0)
-    if name and name.strip():
+    kw = (keyword or name or "").strip()
+    if kw:
+        like = f"%{kw}%"
+        q = q.filter(
+            or_(
+                BizProduct.name.like(like),
+                BizProduct.brand.like(like),
+                BizProduct.sku.like(like),
+                BizProduct.description.like(like),
+            )
+        )
+    elif name and name.strip():
         q = q.filter(BizProduct.name.contains(name.strip()))
     if brand and brand.strip():
         q = q.filter(BizProduct.brand.contains(brand.strip()))
@@ -57,10 +138,28 @@ def list_products(
         q = q.filter(BizProduct.category_id == category_id)
     if status is not None and str(status) != "":
         q = q.filter(BizProduct.status == int(status))
-    q = q.order_by(BizProduct.create_time.desc())
+
+    col = (column or "createTime").strip()
+    direction = (order or "desc").strip().lower()
+    col_map = {
+        "createTime": BizProduct.create_time,
+        "price": BizProduct.price,
+        "stock": BizProduct.stock,
+        "name": BizProduct.name,
+        "rating": BizProduct.rating,
+    }
+    sort_col = col_map.get(col, BizProduct.create_time)
+    q = q.order_by(asc(sort_col) if direction == "asc" else desc(sort_col))
+
     items, total = paginate_query(q, page_no, page_size)
     cat_map = _category_name_map(db, [i.category_id or "" for i in items])
-    records = [product_to_dict(db, i, cat_map) for i in items]
+    stats_map: Dict[str, Dict[str, Any]] = {}
+    if with_stats:
+        stats_map = _review_stats_map(db, [i.id for i in items])
+    records = [
+        product_to_dict(db, i, cat_map, stats_map.get(i.id))
+        for i in items
+    ]
     from app.schemas.response import PageResult
 
     return PageResult.build(records, total, page_no, page_size).model_dump()

@@ -16,6 +16,21 @@ from app.services import product_service
 router = APIRouter(prefix="/product", tags=["商品信息"])
 
 
+@router.get("/brands")
+def product_brands(
+    categoryId: Optional[str] = None,
+    status: Optional[int] = 1,
+    limit: int = Query(80, ge=1, le=200),
+    db: Session = Depends(get_db),
+    user: SysUser = Depends(get_current_user),
+):
+    """手机选品左侧/品牌面板：去重品牌列表。"""
+    data = product_service.list_brands(
+        db, category_id=categoryId, status=status, limit=limit
+    )
+    return Result.ok(data)
+
+
 @router.get("/list")
 def product_list(
     pageNo: int = Query(1),
@@ -25,6 +40,10 @@ def product_list(
     sku: Optional[str] = None,
     categoryId: Optional[str] = None,
     status: Optional[int] = None,
+    keyword: Optional[str] = None,
+    column: Optional[str] = None,
+    order: Optional[str] = None,
+    withStats: Optional[bool] = Query(False),
     db: Session = Depends(get_db),
     user: SysUser = Depends(get_current_user),
 ):
@@ -37,6 +56,10 @@ def product_list(
         sku=sku,
         category_id=categoryId,
         status=status,
+        keyword=keyword,
+        column=column,
+        order=order,
+        with_stats=bool(withStats),
     )
     return Result.ok(data)
 

@@ -17,7 +17,7 @@
       </nav>
       <div class="home-nav-actions">
         <button class="login-link" type="button" @click="logout">退出登录</button>
-        <button class="nav-cta" type="button" @click="scrollToSection('solutions')">开始使用 <span>↗</span></button>
+        <button class="nav-cta" type="button" @click="enterMobile">手机评论 <span>↗</span></button>
         <button class="nav-cta" type="button" @click="enterAdmin">进入后台 <span>↘</span></button>
       </div>
       <button class="mobile-menu" type="button" aria-label="展开导航" @click="mobileOpen = !mobileOpen">{{ mobileOpen ? '×' : '☰' }}</button>
@@ -29,6 +29,7 @@
       <button type="button" @click="scrollToSection('solutions')">解决方案</button>
       <button type="button" @click="scrollToSection('footer')">关于我们</button>
       <button type="button" @click="logout">退出登录</button>
+      <button type="button" @click="enterMobile">手机评论</button>
       <button type="button" @click="enterAdmin">进入后台</button>
     </nav>
 
@@ -38,8 +39,8 @@
         <h1>看见用户的<br /><em>真实感受。</em></h1>
         <p>从海量反馈中，捕捉情绪的方向与温度。<br />让每一次产品决策，都更接近用户心里的答案。</p>
         <div class="hero-actions">
-          <button class="primary-action" type="button" @click="scrollToSection('insights')">进入我的空间 <span>→</span></button>
-          <button class="secondary-action" type="button" @click="scrollToSection('solutions')"><b>▶</b> 看看它如何工作</button>
+          <button class="primary-action" type="button" @click="enterMobile">手机评论 <span>→</span></button>
+          <button class="secondary-action" type="button" @click="scrollToSection('insights')"><b>▶</b> 看看它如何工作</button>
         </div>
         <div class="hero-proof"><span class="proof-avatars"><i>J</i><i>L</i><i>Y</i><i>+</i></span><span>被 2,000+ 个团队<br />用来听见用户</span><b>✓</b></div>
       </div>
@@ -61,7 +62,7 @@
       </div>
     </section>
 
-    <section id="solutions" class="quiet-cta"><div><span class="section-kicker">准备好了吗</span><h2>从今天开始，<br /><em>听见更多可能。</em></h2></div><button class="primary-action" type="button" @click="openInsight(PageEnum.BASE_INSIGHT)">开始探索 <span>→</span></button><div class="quiet-checks"><span>✓ 无需信用卡</span><span>✓ 5 分钟上手</span></div></section>
+    <section id="solutions" class="quiet-cta"><div><span class="section-kicker">准备好了吗</span><h2>从今天开始，<br /><em>听见更多可能。</em></h2></div><button class="primary-action" type="button" @click="enterMobile">打开手机评论 <span>→</span></button><div class="quiet-checks"><span>✓ 评论查找布局</span><span>✓ 洞察 / 看板齐全</span></div></section>
 
     <footer id="footer" class="home-footer"><span><i class="brand-mark"><i /><i /><i /></i><b class="brand-word">Sentiment</b></span><p>让每一个真实的声音，都被温柔地看见。</p><small>© 2026 Insight · Made for clarity</small></footer>
   </main>
@@ -85,6 +86,11 @@
   function scrollToTop() { mobileOpen.value = false; window.scrollTo({ top: 0, behavior: 'smooth' }); }
   function scrollToSection(id: string) { mobileOpen.value = false; document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); }
   function openInsight(route: string) { router.push(route); }
+  /** 手机端评论查找 */
+  function enterMobile() {
+    mobileOpen.value = false;
+    router.push(PageEnum.MOBILE_SELECT);
+  }
   /** 进入后台：默认打开评价看板 */
   function enterAdmin() {
     mobileOpen.value = false;
