@@ -1,4 +1,4 @@
-// token key
+// token key（前台 Welcome/Insight 与后台系统管理共用同一 SPA localStorage）
 export const TOKEN_KEY = 'TOKEN__';
 
 export const LOCALE_KEY = 'LOCALE__';
@@ -15,9 +15,10 @@ export const DB_DICT_DATA_KEY = 'UI_CACHE_DB_DICT_DATA';
 // project config key
 export const PROJ_CFG_KEY = 'PROJ__CFG__KEY__';
 
-/** 顶栏/菜单默认白色主题版本，升级后首次启动会强制迁移 */
+/** 顶栏/菜单主题版本，升级后首次启动会强制迁移 */
 export const PROJ_THEME_VERSION_KEY = 'PROJ__THEME__VERSION__';
-export const PROJ_THEME_CFG_VERSION = 1;
+/** v3：侧栏/菜单深度对齐前台 */
+export const PROJ_THEME_CFG_VERSION = 3;
 
 // lock info
 export const LOCK_INFO_KEY = 'LOCK__INFO__KEY__';

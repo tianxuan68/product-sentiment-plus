@@ -1,12 +1,10 @@
 <template>
+  <!-- 纯表格布局，对齐角色管理（无工作台背板） -->
   <div>
-    <!--引用表格-->
     <BasicTable @register="registerTable" :rowSelection="rowSelection">
-      <!--插槽:table标题-->
       <template #tableTitle>
         <a-button type="primary" preIcon="ant-design:plus-outlined" @click="handleCreate"> 新增</a-button>
-        <a-button type="primary" preIcon="ant-design:export-outlined" @click="onExportXls" > 导出</a-button>
-<!--        <j-upload-button type="primary" preIcon="ant-design:import-outlined" @click="onImportXls" v-auth="'system:user:import'">导入</j-upload-button>-->
+        <a-button type="primary" preIcon="ant-design:export-outlined" @click="onExportXls"> 导出</a-button>
         <import-excel-progress :upload-url="getImportUrl" @success="reload"></import-excel-progress>
         <a-button type="primary" @click="openModal(true, {})" preIcon="ant-design:hdd-outlined"> 回收站</a-button>
         <a-dropdown v-if="selectedRowKeys.length > 0">
@@ -31,35 +29,28 @@
             </a-menu>
           </template>
           <a-button
-          >批量操作
+            >批量操作
             <Icon icon="mdi:chevron-down"></Icon>
           </a-button>
         </a-dropdown>
       </template>
-      <!--操作栏-->
       <template #action="{ record }">
         <TableAction :actions="getTableAction(record)" :dropDownActions="getDropDownAction(record)" />
       </template>
     </BasicTable>
-    <!--用户抽屉-->
     <UserDrawer @register="registerDrawer" @success="handleSuccess" />
-    <!--修改密码-->
     <PasswordModal @register="registerPasswordModal" @success="reload" />
-    <!--回收站-->
     <UserRecycleBinModal @register="registerModal" @success="reload" />
-    <!-- 离职人员列弹窗 -->
     <UserQuitModal @register="registerQuitModal" @success="reload" />
   </div>
 </template>
 
 <script lang="ts" name="system-user" setup>
-  //ts语法
-  import { ref, computed, unref } from 'vue';
+  import { unref } from 'vue';
   import { BasicTable, TableAction, ActionItem } from '/@/components/Table';
   import UserDrawer from './UserDrawer.vue';
   import UserRecycleBinModal from './UserRecycleBinModal.vue';
   import PasswordModal from './PasswordModal.vue';
-  import JThirdAppButton from '/@/components/jeecg/thirdApp/JThirdAppButton.vue';
   import UserQuitModal from './UserQuitModal.vue';
   import { useDrawer } from '/@/components/Drawer';
   import { useListPage } from '/@/hooks/system/useListPage';
@@ -71,34 +62,25 @@
   import ImportExcelProgress from './components/ImportExcelProgress.vue';
 
   const { createMessage, createConfirm } = useMessage();
-  const { isDisabledAuth, hasPermission } = usePermission();
-  
-  //注册drawer
+  const { hasPermission } = usePermission();
+
   const [registerDrawer, { openDrawer }] = useDrawer();
-  //回收站model
   const [registerModal, { openModal }] = useModal();
-  //密码model
   const [registerPasswordModal, { openModal: openPasswordModal }] = useModal();
-  //代理人model
-  const [registerAgentModal, { openModal: openAgentModal }] = useModal();
-  //离职代理人model
-  const [registerQuitAgentModal, { openModal: openQuitAgentModal }] = useModal();
-  //离职用户列表model
   const [registerQuitModal, { openModal: openQuitModal }] = useModal();
 
-  // 列表页面公共参数、方法
-  const { prefixCls, tableContext, onExportXls, onImportXls } = useListPage({
+  const { tableContext, onExportXls } = useListPage({
     designScope: 'user-list',
     tableProps: {
       title: '用户列表',
       api: listNoCareTenant,
       columns: columns,
-      canResize: true,
       size: 'small',
       formConfig: {
-        // labelWidth: 200,
         schemas: searchFormSchema,
       },
+
+
       actionColumn: {
         width: 120,
       },
@@ -106,8 +88,8 @@
         return Object.assign({ column: 'createTime', order: 'desc' }, params);
       },
       defSort: {
-        column: "",
-        order: ""
+        column: '',
+        order: '',
       },
     },
     exportConfig: {
@@ -119,8 +101,7 @@
     },
   });
 
-  //注册table数据
-  const [registerTable, { reload, updateTableDataRecord, clearSelectedRowKeys }, { rowSelection, selectedRows, selectedRowKeys }] = tableContext;
+  const [registerTable, { reload, clearSelectedRowKeys }, { rowSelection, selectedRows, selectedRowKeys }] = tableContext;
 
   /**
    * 新增事件
@@ -235,12 +216,14 @@
         content: '是否重置选中的账号密码?',
         onOk: async () => {
           const usernames = selectedRows.value.map((item) => item.username).join(',');
-          await resetPassword({ usernames: usernames }, ()=>{reload();clearSelectedRowKeys();});
+          await resetPassword({ usernames: usernames }, () => {
+            reload();
+            clearSelectedRowKeys();
+          });
         },
       });
     }
   }
-
 
   /**
    *同步钉钉和微信回调
@@ -303,7 +286,4 @@
       },
     ];
   }
-
 </script>
-
-<style scoped></style>

@@ -1,7 +1,11 @@
 import type { ProjectConfig } from '/#/config';
 import { PROJ_THEME_CFG_VERSION, PROJ_THEME_VERSION_KEY } from '/@/enums/cacheEnum';
 import { ThemeEnum } from '/@/enums/appEnum';
-import { DEFAULT_HEADER_BG_COLOR, DEFAULT_SIDEBAR_BG_COLOR } from '/@/settings/designSetting';
+import {
+  DEFAULT_HEADER_BG_COLOR,
+  DEFAULT_SIDEBAR_BG_COLOR,
+  SENTIMENT_PRIMARY,
+} from '/@/settings/designSetting';
 import { Persistent } from '/@/utils/cache/persistent';
 
 export interface ThemeDefaultsMigrationResult {
@@ -10,7 +14,7 @@ export interface ThemeDefaultsMigrationResult {
 }
 
 /**
- * 首次升级或尚未写入主题版本时，将顶栏/菜单强制设为天选默认白色，
+ * 首次升级或尚未写入主题版本时，将顶栏/菜单强制对齐前台 Sentiment 壳层，
  * 避免 localStorage 中的 JeecgBoot 旧配色覆盖 projectSetting。
  */
 export function applyProjectThemeDefaults(
@@ -25,10 +29,16 @@ export function applyProjectThemeDefaults(
 
   const next: ProjectConfig = {
     ...(cfg ?? ({} as ProjectConfig)),
+    themeColor: SENTIMENT_PRIMARY,
+    themeMode: ThemeEnum.LIGHT,
+    showSettingButton: false,
+    showDarkModeToggle: false,
     headerSetting: {
       ...(cfg?.headerSetting ?? {}),
       bgColor: DEFAULT_HEADER_BG_COLOR,
       theme: ThemeEnum.LIGHT,
+      showNotice: false,
+      showSearch: false,
     },
     menuSetting: {
       ...(cfg?.menuSetting ?? {}),

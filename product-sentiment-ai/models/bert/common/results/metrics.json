@@ -1,0 +1,13 @@
+{
+  "accuracy": 0.9702439024390244,
+  "precision": 0.9832591273374889,
+  "recall": 0.9841354723707665,
+  "f1": 0.9836971046770602,
+  "model": "bert_all",
+  "base": "E:\\tianxuan\\product-sentiment-plus\\product-sentiment-ai\\models\\bert\\common\\pretrained\\models\\tiansz--bert-base-chinese\\snapshots\\master",
+  "epoch": 3,
+  "train_size": 55343,
+  "threshold": 0.38000000000000006,
+  "select_metric": "f1",
+  "fp16": true
+}

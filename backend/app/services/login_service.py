@@ -69,11 +69,11 @@ def authenticate_account(db: Session, username: str, password: str) -> SysUser:
     plain = parse_client_password(password)
     user = db.query(SysUser).filter(SysUser.username == username).first()
     if not user or user.del_flag == 1:
-        raise ValueError("用户名或密码错误")
+        raise ValueError("用户名或密码错误（默认账号 admin / 123456）")
     if user.status != 1:
         raise ValueError("用户已冻结")
     if not verify_password(plain, username, user.salt or "", user.password or ""):
-        raise ValueError("用户名或密码错误")
+        raise ValueError("用户名或密码错误（刷库后默认密码为 123456）")
     return user
 
 

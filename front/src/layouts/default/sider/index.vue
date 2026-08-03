@@ -48,15 +48,21 @@
     .ant-drawer-body {
       height: 100vh;
       padding: 0;
+      background: #f7fcfb !important;
+    }
+
+    .ant-drawer-content {
+      background: #f7fcfb !important;
     }
 
     .ant-drawer-header-no-title {
       display: none;
     }
 
+    // 遮罩铺满侧栏 Drawer 宿主，避免 left/top unset 错位盖住整页
     .ant-drawer-mask {
-      left: unset;
-      top: unset;
+      position: absolute !important;
+      inset: 0 !important;
     }
   }
 </style>

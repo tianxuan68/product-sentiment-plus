@@ -73,9 +73,10 @@ export function updateSidebarBgColor(color?: string) {
   // 代码逻辑说明: 【QQYUN-8922】左侧导航栏文字颜色调整区分彩色和暗黑
   let theme;
   let isThemeBright = false;
-  if (['#fff', '#ffffff'].includes(color!.toLowerCase()) && !darkMode) {
+  // #f3fbfc 等前台浅色底也按 light 菜单处理
+  if (['#fff', '#ffffff', '#f3fbfc', '#f7fcfb', '#eaf7f5'].includes(color!.toLowerCase()) && !darkMode) {
     theme = ThemeEnum.LIGHT;
-  } else if (['#009688', '#e74c3c','#037bd5'].includes(color!.toLowerCase()) && !darkMode) {
+  } else if (['#009688', '#e74c3c','#037bd5', '#167f87'].includes(color!.toLowerCase()) && !darkMode) {
     theme = ThemeEnum.DARK;
     isThemeBright = true;
   } else {

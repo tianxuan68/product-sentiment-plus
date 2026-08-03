@@ -20,11 +20,11 @@ const { themeColor, split, mode } = getConfigByMenuType(menuType);
 // update-end--author:liaozhiyang---date:20251201---for【QQYUN-14176】修改一个配置就能切换默认四个主题，不需要额外修改颜色等
 // ! 改动后需要清空浏览器缓存
 const setting: ProjectConfig = {
-  // 是否显示SettingButton
-  showSettingButton: true,
+  // 是否显示SettingButton（后台保持简洁，对齐前台）
+  showSettingButton: false,
 
   // 是否显示主题切换按钮
-  showDarkModeToggle: true,
+  showDarkModeToggle: false,
 
   // 设置按钮位置 可选项
   // SettingButtonPositionEnum.AUTO: 自动选择
@@ -88,9 +88,9 @@ const setting: ProjectConfig = {
     // 显示官网按钮
     showDoc: false,
     // 显示消息中心按钮
-    showNotice: true,
+    showNotice: false,
     // 显示菜单搜索按钮
-    showSearch: true,
+    showSearch: false,
   },
 
   // 菜单配置

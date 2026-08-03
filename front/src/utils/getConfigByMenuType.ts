@@ -3,6 +3,7 @@ import {
   APP_PRESET_COLOR_LIST,
   DEFAULT_HEADER_BG_COLOR,
   DEFAULT_SIDEBAR_BG_COLOR,
+  SENTIMENT_PRIMARY,
 } from '/@/settings/designSetting';
 
 /**
@@ -33,8 +34,8 @@ export function getConfigByMenuType(menuType: MenuTypeEnum): {
     // 侧边折叠导航模式
     themeColor = APP_PRESET_COLOR_LIST[1];
   } else if (menuType === MenuTypeEnum.SIDEBAR) {
-    // 侧边栏导航
-    themeColor = APP_PRESET_COLOR_LIST[1];
+    // 侧边栏导航：对齐前台 Sentiment 青绿主色
+    themeColor = SENTIMENT_PRIMARY || APP_PRESET_COLOR_LIST[0];
   }
   return {
     themeColor,

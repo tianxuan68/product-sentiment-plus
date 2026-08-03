@@ -1,4 +1,5 @@
 from app.models.base import Base
+from app.models.biz import BizCategory, BizProduct, BizSentimentQuery
 from app.models.entities import (
     SysDepart,
     SysDict,
@@ -13,6 +14,9 @@ from app.models.entities import (
 
 __all__ = [
     "Base",
+    "BizCategory",
+    "BizProduct",
+    "BizSentimentQuery",
     "SysDepart",
     "SysDict",
     "SysDictItem",

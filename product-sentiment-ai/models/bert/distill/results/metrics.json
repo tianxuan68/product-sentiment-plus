@@ -1,0 +1,12 @@
+{
+  "accuracy": 0.9507317073170731,
+  "precision": 0.9641420325345461,
+  "recall": 0.9825311942959002,
+  "f1": 0.9732497572172685,
+  "model": "bert_distill_student",
+  "teacher": "./models/bert/common/model/bert_all",
+  "temperature": 4.0,
+  "alpha": 0.3,
+  "epoch": 2,
+  "train_size": 55343
+}

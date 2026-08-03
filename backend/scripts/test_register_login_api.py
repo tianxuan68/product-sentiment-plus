@@ -1,22 +1,19 @@
-"""Live API test: register then login."""
-from __future__ import annotations
+"""Live API test: register then login.
 
+请在 backend 目录下运行:
+    python -m scripts.test_register_login_api
+"""
+
+# 导包
 import base64
-import sys
 import time
-from pathlib import Path
 
 import requests
 from Crypto.Cipher import AES
-
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
+from sqlalchemy import create_engine, text
 
 from app.core.security import AES_IV, AES_KEY, encrypt_password, verify_password
 from app.core.config import settings
-from sqlalchemy import create_engine, text
-
-BASE = "http://127.0.0.1:8000/jeecg-boot"
 
 
 def aes_encrypt(plain: str) -> str:
@@ -28,11 +25,12 @@ def aes_encrypt(plain: str) -> str:
 
 
 def main() -> None:
+    base = "http://127.0.0.1:8000/jeecg-boot"
     username = f"autotest_{int(time.time()) % 100000}"
     phone = "13900001234"
     password = "Test@123456"
 
-    sms = requests.post(f"{BASE}/sys/sms", json={"mobile": phone, "smsmode": "1"}, timeout=15).json()
+    sms = requests.post(f"{base}/sys/sms", json={"mobile": phone, "smsmode": "1"}, timeout=15).json()
     print("SMS:", sms)
     code = (sms.get("result") or {}).get("devCode") or ""
     if not code and "开发模式验证码" in (sms.get("message") or ""):
@@ -42,7 +40,7 @@ def main() -> None:
         return
 
     reg = requests.post(
-        f"{BASE}/sys/user/register",
+        f"{base}/sys/user/register",
         json={
             "username": username,
             "phone": phone,
@@ -69,7 +67,7 @@ def main() -> None:
         print("Hash match expected:", expected == row["password"])
 
     login = requests.post(
-        f"{BASE}/sys/login",
+        f"{base}/sys/login",
         json={"username": username, "password": aes_encrypt(password), "captcha": "", "checkKey": "test"},
         timeout=15,
     ).json()

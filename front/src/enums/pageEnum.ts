@@ -1,8 +1,20 @@
 export enum PageEnum {
   // basic login path
   BASE_LOGIN = '/login',
-  // basic home path
-  BASE_HOME = '/system/user',
+  // 前台品牌首页（勿占用 /system/user，该路径留给后台用户管理）
+  BASE_HOME = '/home',
+  // 前台洞察工作台
+  BASE_INSIGHT = '/home/insight',
+  // 手机端：评论查找 + 洞察/看板/我的
+  MOBILE_HOME = '/m',
+  MOBILE_SELECT = '/m/select',
+  MOBILE_INSIGHT = '/m/insight',
+  MOBILE_BOARD = '/m/board',
+  MOBILE_MINE = '/m/mine',
+  // 后台默认落地：评价看板
+  BASE_ADMIN = '/sentiment/dashboard',
+  // post-login brand welcome path
+  BASE_WELCOME = '/welcome',
   // error page path
   ERROR_PAGE = '/exception',
   // error log page path

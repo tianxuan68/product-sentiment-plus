@@ -1,0 +1,25 @@
+[     778ms] [LOG] to.fullPath 1 /system/user @ http://127.0.0.1:3100/src/router/guard/permissionGuard.ts?t=1785652999963:77
+[     779ms] [LOG] to.path 2 /system/user @ http://127.0.0.1:3100/src/router/guard/permissionGuard.ts?t=1785652999963:78
+[     942ms] [LOG] ------clear------进入clear方法 @ http://127.0.0.1:3100/src/utils/cache/memory.ts:76
+[     942ms] [LOG] ------clear------进入clear方法 @ http://127.0.0.1:3100/src/utils/cache/memory.ts:76
+[     962ms] [LOG]  vue3 app 加载完成！ @ http://127.0.0.1:3100/src/main.ts?t=1785652999963:49
+[    1154ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:3100/jeecgboot/sys/thirdLogin/config?_t=1785653267269:0
+[    1156ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:3100/jeecgboot/sys/thirdLogin/config?_t=1785653267316:0
+[    1182ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ http://127.0.0.1:3100/login:0
+[   12534ms] [LOG]  --- 构建后台路由菜单 ---  @ http://127.0.0.1:3100/src/store/modules/permission.ts?t=1785652999963:150
+[   26068ms] [LOG] storePathTitle /system/user @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785652999963:74
+[   26072ms] [LOG] 成功。。。。。 @ http://127.0.0.1:3100/src/layouts/default/header/index.vue?t=1785652999963:110
+[  129330ms] [LOG] storePathTitle /system/user @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785652999963:74
+[  131917ms] [LOG] ------clear------进入clear方法 @ http://127.0.0.1:3100/src/utils/cache/memory.ts:76
+[  131917ms] [LOG] ------clear------进入clear方法 @ http://127.0.0.1:3100/src/utils/cache/memory.ts:76
+[  132020ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:3100/jeecgboot/sys/thirdLogin/config?_t=1785653398196:0
+[  132028ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:3100/jeecgboot/sys/thirdLogin/config?_t=1785653398203:0
+[  132087ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ http://127.0.0.1:3100/login?redirect=/system/user:0
+[  145887ms] [LOG]  --- 构建后台路由菜单 ---  @ http://127.0.0.1:3100/src/store/modules/permission.ts?t=1785652999963:150
+[  146158ms] [LOG] storePathTitle /system/user @ http://127.0.0.1:3100/src/components/SimpleMenu/src/components/MenuItem.vue?t=1785652999963:74
+[  146170ms] [LOG] 成功。。。。。 @ http://127.0.0.1:3100/src/layouts/default/header/index.vue?t=1785652999963:110
+[  153475ms] [LOG] ------clear------进入clear方法 @ http://127.0.0.1:3100/src/utils/cache/memory.ts:76
+[  153475ms] [LOG] ------clear------进入clear方法 @ http://127.0.0.1:3100/src/utils/cache/memory.ts:76
+[  153521ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:3100/jeecgboot/sys/thirdLogin/config?_t=1785653419742:0
+[  153529ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:3100/jeecgboot/sys/thirdLogin/config?_t=1785653419747:0
+[  153606ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ http://127.0.0.1:3100/login?redirect=/system/user:0

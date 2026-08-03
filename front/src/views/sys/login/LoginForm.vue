@@ -9,7 +9,7 @@
     </FormItem>
 
     <!--验证码-->
-    <ARow class="enter-x">
+    <ARow v-if="captchaEnabled" class="enter-x">
       <ACol :span="12">
         <FormItem name="inputCode" class="enter-x">
           <Input size="large" v-model:value="formData.inputCode" :placeholder="t('sys.login.inputCode')" style="min-width: 100px" />
@@ -38,7 +38,10 @@
         </FormItem>
       </ACol>
       <ACol :span="12">
-        <FormItem :style="{ 'text-align': 'right' }">
+        <FormItem class="login-secondary-actions" :style="{ 'text-align': 'right' }">
+          <Button type="link" size="small" @click="setLoginState(LoginStateEnum.REGISTER)">
+            免费注册
+          </Button>
           <!-- No logic, you need to deal with it yourself -->
           <Button type="link" size="small" @click="setLoginState(LoginStateEnum.RESET_PASSWORD)">
             {{ t('sys.login.forgetPassword') }}
@@ -55,24 +58,6 @@
               {{ t('sys.login.registerButton') }}
             </Button> -->
     </FormItem>
-    <ARow class="enter-x">
-      <ACol :md="8" :xs="24">
-        <Button block @click="setLoginState(LoginStateEnum.MOBILE)">
-          {{ t('sys.login.mobileSignInFormTitle') }}
-        </Button>
-      </ACol>
-      <ACol :md="8" :xs="24" class="!my-2 !md:my-0 xs:mx-0 md:mx-2">
-        <Button block @click="setLoginState(LoginStateEnum.QR_CODE)">
-          {{ t('sys.login.qrSignInFormTitle') }}
-        </Button>
-      </ACol>
-      <ACol :md="7" :xs="24">
-        <Button block @click="setLoginState(LoginStateEnum.REGISTER)">
-          {{ t('sys.login.registerButton') }}
-        </Button>
-      </ACol>
-    </ARow>
-
     <Divider v-if="enabledThirdSources.length > 0" class="enter-x">{{ t('sys.login.otherSignIn') }}</Divider>
 
     <div v-if="enabledThirdSources.length > 0" class="flex justify-evenly enter-x" :class="`${prefixCls}-sign-in-way`">
@@ -129,6 +114,7 @@
     requestCodeSuccess: false,
     checkKey: null,
   });
+  const captchaEnabled = ref(false);
   const enabledThirdSources = ref<string[]>([]);
 
   const { validForm } = useFormValid(formRef);
@@ -173,11 +159,15 @@
   }
   function handleChangeCheckCode() {
     formData.inputCode = '';
+    captchaEnabled.value = false;
     // 代码逻辑说明: [QQYUN-10775]验证码可以复用 #7674------------
     randCodeData.checkKey = new Date().getTime() + Math.random().toString(36).slice(-4); // 1629428467008;
     getCodeInfo(randCodeData.checkKey).then((res) => {
       randCodeData.randCodeImage = res;
       randCodeData.requestCodeSuccess = true;
+      captchaEnabled.value = true;
+    }).catch(() => {
+      randCodeData.requestCodeSuccess = false;
     });
   }
 

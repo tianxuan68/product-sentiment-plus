@@ -168,11 +168,18 @@
     }
 
     &:not(.ant-layout-sider-dark) {
-      // box-shadow: 2px 0 8px 0 rgba(29, 35, 41, 0.05);
+      background: #f7fcfb !important;
+      border-right: 1px solid rgba(46, 115, 126, 0.12) !important;
+      box-shadow: none !important;
+
+      .ant-layout-sider-children {
+        background: linear-gradient(180deg, rgba(217, 247, 245, 0.55) 0%, transparent 140px), #f7fcfb !important;
+      }
 
       .ant-layout-sider-trigger {
-        color: @text-color-base;
-        border-top: 1px solid @border-color-light;
+        color: #214d58 !important;
+        border-top: 1px solid rgba(46, 115, 126, 0.12) !important;
+        background: rgba(243, 251, 252, 0.95) !important;
       }
     }
 

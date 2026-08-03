@@ -1,11 +1,11 @@
-"""Inspect user password hash in DB."""
-from __future__ import annotations
+"""Inspect user password hash in DB.
 
+请在 backend 目录下运行:
+    python -m scripts.inspect_user
+"""
+
+# 导包
 import sys
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
 from sqlalchemy import create_engine, text
 

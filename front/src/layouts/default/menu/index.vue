@@ -84,7 +84,8 @@
       const getWrapperStyle = computed((): CSSProperties => {
         return {
           // 代码逻辑说明: 【issues/7548】侧边栏导航模式时会导致下面菜单滚动显示不全
-          height: `calc(100% - ${unref(getIsShowLogo) ? '60px' : '0px'})`,
+          // Logo 区高度对齐 @header-height / 前台 home-nav
+          height: `calc(100% - ${unref(getIsShowLogo) ? '72px' : '0px'})`,
         };
       });
 

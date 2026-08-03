@@ -23,8 +23,8 @@
   import { TabsThemeEnum } from '/@/enums/appEnum';
   import { MenuTypeEnum } from '/@/enums/menuEnum';
 
-  // 代码逻辑说明: 【QQYUN-8774】网站header区域加高
-  const HEADER_HEIGHT = 60;
+  // 对齐前台 home-nav / @header-height
+  const HEADER_HEIGHT = 72;
 
   // updateBy:sunjianlei---updateDate:2021-09-03---修改tab切换栏样式：更改高度
   const TABS_HEIGHT = 32;

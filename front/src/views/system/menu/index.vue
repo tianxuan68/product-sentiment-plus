@@ -1,5 +1,5 @@
 <template>
-  <div class="p-4">
+  <div>
     <BasicTable @register="registerTable" :rowSelection="rowSelection">
       <template #tableTitle>
         <a-button type="primary" preIcon="ant-design:plus-outlined" @click="handleCreate"> 新增菜单</a-button>
@@ -76,23 +76,10 @@
       title: '菜单列表',
       api: list,
       columns: columns,
-      size: 'small',
       pagination: false,
       isTreeTable: true,
-      striped: true,
-      useSearchForm: true,
-      showTableSetting: true,
-      bordered: true,
-      showIndexColumn: false,
-      tableSetting: { fullScreen: true },
       formConfig: {
-        // 代码逻辑说明: 【QQYUN-5873】查询区域lablel默认居左
-        labelWidth: 74,
-        rowProps: { gutter: 24 },
         schemas: searchFormSchema,
-        autoAdvancedCol: 4,
-        baseColProps: { xs: 24, sm: 12, md: 6, lg: 6, xl: 6, xxl: 6 },
-        actionColOptions: { xs: 24, sm: 12, md: 6, lg: 6, xl: 6, xxl: 6 },
       },
       actionColumn: {
         width: 120,

@@ -1,0 +1,5 @@
+.venv/
+packages/
+release/
+sentiment-release.tar.gz
+sentiment-release.zip

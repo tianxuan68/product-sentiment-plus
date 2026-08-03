@@ -1,69 +1,43 @@
 # product-sentiment-plus
 
-# product-sentiment-ai
+电商评论情感分析 + 拼多多式商品动态标签墙。
 
-目录按任务分工划分，命名见名知意（无数字前缀）。
+## 部署（推荐从这里开始）
 
-## 目录与人员
+傻瓜式 Windows 部署（装库 / 一键启动 / 登录验收）：
 
-| 目录 | 对应分工 | 人员 |
-|------|----------|------|
-| `data/` | 数据处理 | 刘攀 / 唐海乘 / 江彩亮 |
-| `models/baseline/` | 基线 | 人员4 |
-| `models/fasttext/` | FastText | 人员5 |
-| `models/bert_all/` | 总BERT | 人员6 |
-| `models/bert_category/` | 类目BERT | 人员7 / 人员8 |
-| `backend/` | 后端+项目部署 | 郑平高 |
-| `frontend/` | 前端 | 邓新晓 |
+→ **[`DEPLOY.md`](DEPLOY.md)**  
+→ 一键启动脚本：`deploy/start-all.bat`
 
-## 结构
+AI 训练与数据处理在子目录 **`product-sentiment-ai/`**，技术说明、训练步骤见：
 
-```text
-product-sentiment-ai/
-├── docs/                         # 任务分工、数据说明等
-├── data/                         # 数据处理
-│   ├── sources/                  # 原始数据（只读）
-│   ├── processed/                # 预处理产出（reviews 等）
-│   ├── annotated/                # 人工标注产出（review_tags）
-│   ├── vocab/                    # 品类标签词表
-│   ├── examples/                 # 字段格式示例
-│   └── scripts/
-│       ├── preprocess/           # 预处理脚本
-│       └── annotate/             # 标注辅助脚本
-├── models/                       # 模型
-│   ├── common/                   # 共用：读数据、评测
-│   │   ├── dataset/
-│   │   └── metrics/              # 共用的评测代码
-│   ├── baseline/                 # 基线
-│   ├── fasttext/                 # FastText
-│   ├── bert_all/                 # 总BERT
-│   └── bert_category/            # 类目BERT
-│       ├── scripts/              # 训练/推理
-│       ├── checkpoints/          # 权重（不入库）
-│       └── results/              # 指标与日志
-├── backend/                      # 后端
-│   ├── app/                      # 接口
-│   └── deploy/                   # 部署
-└── frontend/                     # 前端
-    └── src/                      # 页面
-```
+→ [`product-sentiment-ai/README.md`](product-sentiment-ai/README.md)
 
-## 数据流向
+## 技术栈一览
 
-```text
-data/sources
-  → data/processed
-  → data/annotated + data/vocab
-  → models/*/scripts 训练
-  → data/processed/product_tags.csv（或入库）
-  → backend → frontend
-```
-
-## 示例数据文件（无序号）
-
-| 文件 | 含义 |
+| 技术 | 用途 |
 |------|------|
-| `data/examples/reviews.csv` | 评论主表 |
-| `data/examples/review_tags.csv` | 评论标签明细 |
-| `data/examples/product_tags.csv` | 商品标签墙 |
-| `data/examples/category_tag_vocab.csv` | 品类标签字典 |
+| 数据清洗 / 分层切分 | 从 `sources` 生成可训练的 `reviews_*.csv` |
+| 规则方面抽取 + 按商品聚合 | 拼多多式动态多标签墙 |
+| jieba + TF-IDF + LR | 机器学习基线 |
+| 字符 n-gram（FastText 风格） | 轻量 NLP 升级 |
+| BERT 微调 | 强效果教师模型 |
+| 知识蒸馏 | 小学生模型学习教师软标签 |
+| FastAPI / Jeecg 前后端 | 展示与业务系统（`backend/`、`front/`） |
+
+## 快速开始（训练）
+
+```bash
+conda activate product-sentiment-plus
+cd product-sentiment-ai
+
+# 1. 处理数据 + 动态打标
+python data/scripts/preprocess/prepare_reviews.py
+python data/scripts/annotate/dynamic_tagging.py
+
+# 2. 训练（或一键）
+python run_pipeline.py --smoke
+# python run_pipeline.py --full
+```
+
+详细原理与每步命令见 `product-sentiment-ai/README.md`。
